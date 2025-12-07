@@ -90,7 +90,7 @@
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v3.4</span>
+    <span>SHADER SYSTEM v3.5</span>
     <span>WEBGL / OCEAN–SUN ENGINE</span>
   </div>
 
@@ -112,7 +112,6 @@
     window.addEventListener("resize", resize);
     resize();
 
-    // мышь и глич (параллакса нет)
     let mouse = { x: 0.5, y: 0.5 };
     let glitchStrength = 0.0;
 
@@ -193,13 +192,25 @@
           col = water;
         }
 
-        // центр солнца на 2/3 ширины, уменьшено до 70% по размеру
+        // параметры солнца
         float horizonY = horizon;
-        float centerXNorm = 2.0 / 3.0; // 2/3 экрана
+        float centerXNorm = 2.0 / 3.0;
         float sunScale = 0.7;
-
         float aspect = res.x / res.y;
-        vec2 p = vec2((uv.x - centerXNorm) * aspect, uv.y - horizonY);
+
+        // медленный цикл захода/восхода
+        float sunPhase = u_time * 0.05;           // скорость цикла
+        float sunOffset = sin(sunPhase) * 0.30;   // амплитуда: достаточно, чтобы мандала полностью ушла за горизонт
+        float sunCenterY = horizonY + sunOffset;
+
+        vec2 p = vec2((uv.x - centerXNorm) * aspect, uv.y - sunCenterY);
+
+        float dSun = length(p);
+        float angle = atan(p.y, p.x);
+
+        // насколько солнце "спрятано" за горизонтом (0 — полностью над, 1 — центр глубоко под)
+        float maxRadius = 0.33 * sunScale;
+        float hidden = clamp((horizonY - sunCenterY) / maxRadius, 0.0, 1.0);
 
         // мандала-солнце (кольца)
         float mandala = 0.0;
@@ -207,14 +218,9 @@
         mandala += waveRing(p, 0.25 * sunScale, 16.0, 0.024 * sunScale, 1.7);
         mandala += waveRing(p, 0.33 * sunScale, 22.0, 0.028 * sunScale, 2.0);
 
-        float dSun = length(p);
-        float angle = atan(p.y, p.x);
-
-        // ---- ЗВУКОВОЕ ЯДРО СОЛНЦА (без "пиксельного трэша") ----
-        float coreBase = 0.12 * sunScale;     // фиксированный радиус
+        // звуковое ядро солнца
+        float coreBase = 0.12 * sunScale;
         float coreMask = 1.0 - smoothstep(coreBase, coreBase + 0.005, dSun);
-
-        // радиальные и угловые волны, имитирующие звуковую интерференцию
         float rNorm = dSun / coreBase;
 
         float radialBeat = 0.5 + 0.5 * sin(rNorm * 40.0 - u_time * 6.0);
@@ -224,27 +230,26 @@
         float soundPattern = radialBeat * 0.55 + harmonic * 0.25 + angularMod * 0.35;
         soundPattern = clamp(soundPattern, 0.0, 1.0);
 
-        // палитра красного заката для ядра
-        vec3 coreBaseCol = vec3(0.80, 0.08, 0.03);   // глубокий красный
-        vec3 coreHotCol  = vec3(1.35, 0.45, 0.12);   // горячий оранжево-красный
+        // палитра красного заката
+        vec3 coreBaseCol = vec3(0.80, 0.08, 0.03);
+        vec3 coreHotCol  = vec3(1.35, 0.45, 0.12);
         vec3 sunColorCore = mix(coreBaseCol, coreHotCol, pow(soundPattern, 1.2));
 
-        // кольца и ореол тоже сдвигаем к красному закату
         vec3 sunColorRing = vec3(1.05, 0.25, 0.10);
         vec3 haloColor    = vec3(0.90, 0.23, 0.13);
 
         col += sunColorRing * mandala * 1.3;
         col += sunColorCore * coreMask * 1.7;
 
-        // ореол вдоль горизонта
+        // ореол вдоль горизонта: тем ярче, чем больше солнце зашло
         float haloH = coreBase * 1.8;
         float haloT = smoothstep(0.0, haloH, abs(uv.y - horizonY));
         float halo = 1.0 - haloT;
-        col += haloColor * halo * 0.22;
+        float haloIntensity = mix(0.14, 0.42, hidden); // усиливаем при "спрятанном" солнце
+        col += haloColor * halo * haloIntensity;
 
         // ОКЕАН: волны + глич ТОЛЬКО здесь
         if (uv.y < horizon) {
-          // отдельные координаты для океана, чтобы глич не трогал небо/солнце
           vec2 uvOcean = uv;
 
           if (g > 0.0) {
@@ -286,7 +291,6 @@
           for (int i = 0; i < 5; i++) {
             float fi = float(i);
             float tLayer = (fi + 1.0) / 7.0;
-            // ближе к нижней части океана
             float yBase = horizon * (0.10 + tLayer * 0.85);
 
             float amp = 0.02 + tLayer * 0.03;
@@ -318,23 +322,20 @@
           float tRef = (horizon - uv.y) / horizon;
           tRef = clamp(tRef, 0.0, 1.0);
 
-          float width = 0.10; // чуть уже
+          float width = 0.10;
           float dx = (uvOcean.x - centerXNorm) / width;
           float spot = exp(-dx * dx * 2.0) * (1.0 - tRef);
 
-          // вертикальная "штриховка"
           float stripePhase = fract(uv.y * 80.0 - u_time * 1.2);
           float stripe =
             smoothstep(0.0, 0.12, stripePhase) *
             (1.0 - smoothstep(0.70, 1.0, stripePhase));
 
-          // поперечная интерференция
           float inter =
             0.5 + 0.5 * sin(uvOcean.x * 220.0 + uv.y * 40.0 + u_time * 4.0);
 
           float reflection = spot * stripe * inter;
 
-          // цвет отражения — тоже красный закат
           vec3 reflColor = vec3(1.0, 0.32, 0.18);
           col += reflColor * reflection * 1.5;
         }

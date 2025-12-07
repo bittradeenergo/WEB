@@ -2,44 +2,49 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Lotus Trance – Quantum Mandala</title>
+  <title>Digital Ocean Sunset</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #000;
-      color: #fff;
+      background: #000010;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
                    Roboto, sans-serif;
+      color: #fff;
     }
+
     canvas {
       position: fixed;
       inset: 0;
       width: 100%;
       height: 100%;
       display: block;
-      background: radial-gradient(circle at center, #050505 0%, #000 55%, #000 100%);
+      background: radial-gradient(circle at top, #060818 0%, #020313 40%, #02020a 100%);
     }
+
     .ui-main {
       position: fixed;
       left: 7vw;
-      bottom: 8vh;
+      top: 7vh;
       z-index: 2;
       pointer-events: none;
       mix-blend-mode: screen;
       text-transform: uppercase;
-      letter-spacing: 0.25em;
+      letter-spacing: 0.3em;
     }
+
     .ui-main h1 {
-      font-size: clamp(1.6rem, 3vw, 3.2rem);
+      font-size: clamp(1.2rem, 2vw, 2.4rem);
       font-weight: 600;
-      margin-bottom: 0.7rem;
-      text-shadow: 0 0 16px rgba(255, 255, 255, 0.8);
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 14px rgba(255, 255, 255, 0.75);
     }
+
     .ui-main .divider {
-      width: 110px;
+      width: 100px;
       height: 1px;
       background: linear-gradient(
         90deg,
@@ -47,35 +52,32 @@
         rgba(255, 255, 255, 0.9) 50%,
         rgba(255, 255, 255, 0) 100%
       );
-      margin: 0.6rem 0 0.7rem -4px;
+      margin: 0.5rem 0 0.6rem -3px;
     }
+
     .ui-main p {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       opacity: 0.8;
     }
+
     .ui-main .tagline {
-      font-size: 0.65rem;
-      margin-top: 0.35rem;
+      font-size: 0.6rem;
+      margin-top: 0.3rem;
       opacity: 0.7;
     }
+
     .corner-label {
       position: fixed;
       right: 4vw;
-      top: 4vh;
+      bottom: 5vh;
       z-index: 2;
-      font-size: 0.6rem;
-      letter-spacing: 0.2em;
+      font-size: 0.55rem;
+      letter-spacing: 0.25em;
       text-transform: uppercase;
       opacity: 0.55;
       pointer-events: none;
       mix-blend-mode: screen;
-    }
-    .corner-label span {
-      display: block;
       text-align: right;
-    }
-    .corner-label span:first-child {
-      margin-bottom: 0.2rem;
     }
   </style>
 </head>
@@ -83,301 +85,229 @@
   <canvas id="scene"></canvas>
 
   <div class="ui-main">
-    <h1>LOTUS TRANCE</h1>
+    <h1>DIGITAL OCEAN</h1>
     <div class="divider"></div>
-    <p>8-petal white lotus • Sonic mandala • Quantum geometry</p>
-    <p class="tagline">GPU shader • Click to glitch • Ritual visuals</p>
+    <p>Blue sound waves • Red digital sun</p>
+    <p class="tagline">Trance label visual • Minimal GPU load</p>
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v2.0</span>
-    <span>WEBGL / LOTUS–MANDALA ENGINE</span>
+    QUANTUM SOUND SCAPE
   </div>
 
   <script>
     const canvas = document.getElementById("scene");
-    const gl = canvas.getContext("webgl", { antialias: true, premultipliedAlpha: false });
+    const ctx = canvas.getContext("2d");
 
-    if (!gl) {
-      alert("WebGL не поддерживается этим браузером.");
-    }
+    let width = window.innerWidth;
+    let height = window.innerHeight;
 
+    // специально НЕ используем высокий dpr — ради производительности
     function resize() {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      canvas.width = w;
-      canvas.height = h;
-      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      const scale = 0.75; // внутреннее разрешение ниже реального, даёт мягкий "кинематографичный" блёр
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
     }
+
     window.addEventListener("resize", resize);
     resize();
 
-    let mouse = { x: 0.5, y: 0.5 }; // нормализованные координаты 0..1
-    window.addEventListener("pointermove", (e) => {
-      mouse.x = e.clientX / window.innerWidth;
-      mouse.y = 1.0 - e.clientY / window.innerHeight;
-    });
+    let lastTime = performance.now();
 
-    let glitchStrength = 0.0;
-    window.addEventListener("click", () => {
-      glitchStrength = 1.0; // глич-пик по клику
-    });
-
-    const vsSource = `
-      attribute vec2 a_position;
-      varying vec2 v_uv;
-      void main() {
-        v_uv = a_position * 0.5 + 0.5;
-        gl_Position = vec4(a_position, 0.0, 1.0);
-      }
-    `;
-
-    const fsSource = `
-      precision highp float;
-
-      uniform vec2 u_resolution;
-      uniform float u_time;
-      uniform vec2 u_mouse;
-      uniform float u_glitch;
-
-      varying vec2 v_uv;
-
-      float hash(vec2 p) {
-        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-      }
-
-      // тонкая линия вокруг кривой (distance ~ 0)
-      float lineAround(float d, float w) {
-        return 1.0 - smoothstep(w, w * 4.0, abs(d));
-      }
-
-      // 8-лепестковый лотос в полярных координатах
-      float lotusLayer(vec2 p, float baseR, float scale, float tShift) {
-        p *= scale;
-        float ang = atan(p.y, p.x);
-        float rad = length(p);
-
-        float petals = 8.0;
-        float k = cos(petals * ang * 0.5);
-        float k2 = cos(petals * ang + tShift);
-
-        float r =
-          baseR
-          + 0.18 * pow(abs(k), 1.6)
-          + 0.05 * k2 * cos(u_time * 0.7 + tShift);
-
-        float vib =
-          0.02 * sin(ang * 16.0 + u_time * 2.3) +
-          0.01 * sin(ang * 9.0 - u_time * 3.7);
-
-        r += vib;
-
-        float d = rad - r;
-        float w = 0.006;
-        float line = lineAround(d, w);
-
-        float inner = 1.0 - smoothstep(0.0, baseR * 2.0, rad);
-        return line * (0.3 + 0.7 * inner);
-      }
-
-      // кольцо-звуковая волна (многополосная мандала)
-      float waveRing(vec2 p, float radius, float freq, float amp, float speed) {
-        float ang = atan(p.y, p.x);
-        float rad = length(p);
-
-        float wave =
-          sin(ang * freq + u_time * speed) +
-          0.5 * sin(ang * (freq * 1.9) - u_time * (speed * 1.3));
-
-        float target = radius + wave * amp;
-        float d = rad - target;
-        return lineAround(d, 0.005);
-      }
-
-      // квадратная линия (мандала из вписанных квадратов)
-      float boxLine(vec2 p, float size, float thickness) {
-        vec2 d = abs(p) - vec2(size);
-        float dist = max(d.x, d.y);
-        return 1.0 - smoothstep(thickness, thickness * 4.0, abs(dist));
-      }
-
-      void main() {
-        vec2 res = u_resolution;
-        vec2 uv = (gl_FragCoord.xy - 0.5 * res) / res.y; // центр, фикс аспекта
-
-        // параллакс от мыши
-        vec2 m = (u_mouse - 0.5) * 2.0;
-        float rotAngle = m.x * 0.6 + sin(u_time * 0.1) * 0.05;
-        float c = cos(rotAngle);
-        float s = sin(rotAngle);
-        mat2 rot = mat2(c, -s, s, c);
-        uv = rot * uv;
-
-        // лёгкое радиальное искривление от мыши
-        float rLen = length(uv);
-        float warp = 1.0 + m.y * 0.25 * smoothstep(0.0, 0.7, rLen);
-        uv *= warp;
-
-        // glitch-сдвиги (строго шейдер, без тяжёлых циклов)
-        float g = u_glitch;
-        if (g > 0.0) {
-          float bandNoise = hash(vec2(floor(uv.y * 60.0), floor(u_time * 40.0)));
-          float xShift = (bandNoise - 0.5) * 0.15 * g;
-          uv.x += xShift;
-
-          float jitter = (hash(vec2(floor(uv * 80.0))) - 0.5) * 0.06 * g;
-          uv += jitter;
-        }
-
-        // ЛОТОС
-        float lotus =
-          lotusLayer(uv, 0.25, 1.1, 0.0) +
-          lotusLayer(uv, 0.32, 1.0, 1.57) * 0.8 +
-          lotusLayer(uv, 0.40, 0.9, 3.14) * 0.6;
-
-        // ЗВУКОВАЯ МАНДАЛА
-        float mandala =
-          waveRing(uv, 0.38, 14.0, 0.03, 1.8) +
-          waveRing(uv, 0.48, 18.0, 0.035, 2.1) +
-          waveRing(uv, 0.60, 24.0, 0.04, 2.5) * 0.9;
-
-        // КВАДРАТНАЯ СИММЕТРИЯ (двойной квадрат в лотосе)
-        vec2 p1 = uv * 1.3;
-        float sq1 = boxLine(p1, 0.27, 0.005);
-        mat2 r45 = mat2(0.7071, -0.7071, 0.7071, 0.7071);
-        vec2 p2 = r45 * p1;
-        float sq2 = boxLine(p2, 0.27, 0.005);
-        float squares = sq1 + sq2 * 0.9;
-
-        // ЯДРО
-        float coreR = length(uv);
-        float corePulse =
-          0.3 +
-          0.7 * (0.5 + 0.5 * sin(u_time * 4.7 + coreR * 20.0));
-        float core =
-          (1.0 - smoothstep(0.0, 0.10, coreR)) *
-          (1.0 - smoothstep(0.02, 0.08, coreR)) *
-          corePulse;
-
-        // ПСЕВДО-ЧАСТИЦЫ / ЗВЁЗДНАЯ ПЫЛЬ
-        vec2 grid = floor(uv * res.y * 0.7);
-        float grain = pow(hash(grid), 22.0);
-        float particles = grain * smoothstep(0.1, 0.8, coreR);
-
-        // ОБЩИЙ ГЛОУ
-        float glow =
-          lotus * 1.2 +
-          mandala * 0.9 +
-          squares * 0.7 +
-          core * 1.5 +
-          particles * 0.6;
-
-        // виньетирование (чтобы края уходили в чёрный)
-        float vignette = smoothstep(1.25, 0.2, length(uv));
-        glow *= vignette;
-
-        // лёгкая квантовая "спектральность" по краю, но основной цвет — белый
-        vec3 col = vec3(glow);
-        vec3 spectral = vec3(0.6, 0.8, 1.4) * (mandala * 0.18);
-        col += spectral;
-
-        // усиление линий лотоса белым
-        col += vec3(1.0) * lotus * 0.4;
-
-        // глич: небольшое выгорание при пике
-        if (g > 0.0) {
-          col *= 1.0 + g * 0.5;
-        }
-
-        // filmic
-        col = 1.0 - exp(-col);
-        col = clamp(col, 0.0, 1.0);
-
-        gl_FragColor = vec4(col, 1.0);
-      }
-    `;
-
-    function createShader(gl, type, source) {
-      const shader = gl.createShader(type);
-      gl.shaderSource(shader, source);
-      gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(shader));
-        gl.deleteShader(shader);
-        return null;
-      }
-      return shader;
+    function drawBackground() {
+      const g = ctx.createLinearGradient(0, 0, 0, height);
+      g.addColorStop(0.0, "#050719");
+      g.addColorStop(0.4, "#020416");
+      g.addColorStop(0.75, "#02051c");
+      g.addColorStop(1.0, "#010310");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, width, height);
     }
 
-    function createProgram(gl, vsSource, fsSource) {
-      const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
-      const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
-      const program = gl.createProgram();
-      gl.attachShader(program, vs);
-      gl.attachShader(program, fs);
-      gl.linkProgram(program);
-      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error(gl.getProgramInfoLog(program));
-        gl.deleteProgram(program);
-        return null;
-      }
-      return program;
+    function drawSun(time) {
+      const horizonY = height * 0.45;
+      const centerX = width * 0.5;
+      const baseRadius = Math.min(width, height) * 0.12;
+
+      // лёгкое дыхание солнца
+      const pulse = 1 + 0.03 * Math.sin(time * 1.5);
+      const radius = baseRadius * pulse;
+
+      // само солнце — красно-оранжевый градиент
+      const grad = ctx.createRadialGradient(centerX, horizonY, 0, centerX, horizonY, radius * 1.4);
+      grad.addColorStop(0.0, "rgba(255, 140, 80, 1)");
+      grad.addColorStop(0.4, "rgba(255, 80, 60, 0.95)");
+      grad.addColorStop(0.7, "rgba(255, 40, 40, 0.65)");
+      grad.addColorStop(1.0, "rgba(255, 0, 0, 0.0)");
+
+      ctx.beginPath();
+      ctx.fillStyle = grad;
+      ctx.arc(centerX, horizonY, radius * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // тонкий яркий диск внутри
+      ctx.beginPath();
+      ctx.arc(centerX, horizonY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255, 210, 180, 0.9)";
+      ctx.lineWidth = 1.2;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = "rgba(255, 180, 120, 0.9)";
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // лёгкий ореол над горизонтом
+      const haloGrad = ctx.createLinearGradient(0, horizonY - radius * 0.3, 0, horizonY + radius * 0.6);
+      haloGrad.addColorStop(0.0, "rgba(255, 110, 70, 0.4)");
+      haloGrad.addColorStop(0.5, "rgba(255, 60, 40, 0.12)");
+      haloGrad.addColorStop(1.0, "rgba(255, 0, 0, 0.0)");
+      ctx.fillStyle = haloGrad;
+      ctx.fillRect(0, horizonY - radius * 0.6, width, radius * 1.3);
     }
 
-    const program = createProgram(gl, vsSource, fsSource);
-    gl.useProgram(program);
+    function drawSunReflection(time) {
+      const horizonY = height * 0.45;
+      const centerX = width * 0.5;
+      const maxDepth = height * 0.5;
+      const baseWidth = Math.min(width, height) * 0.1;
 
-    const positionLocation = gl.getAttribLocation(program, "a_position");
-    const timeLocation = gl.getUniformLocation(program, "u_time");
-    const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
-    const mouseLocation = gl.getUniformLocation(program, "u_mouse");
-    const glitchLocation = gl.getUniformLocation(program, "u_glitch");
+      ctx.save();
+      ctx.translate(centerX, horizonY);
 
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    const quad = new Float32Array([
-      -1, -1,
-       1, -1,
-      -1,  1,
-      -1,  1,
-       1, -1,
-       1,  1,
-    ]);
-    gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
+      const bands = 40;
+      for (let i = 0; i < bands; i++) {
+        const t = i / bands;
+        const y = t * maxDepth;
 
-    gl.enableVertexAttribArray(positionLocation);
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+        const wavePhase = time * 1.2 + y * 0.04;
+        const wobble = Math.sin(wavePhase) * (4 + t * 14);
+        const lineWidthHalf = baseWidth * (0.6 + t * 2.8);
 
-    let startTime = performance.now();
-    let lastTime = startTime;
+        const alpha = 0.6 * (1.0 - t) * (0.4 + 0.6 * Math.sin(time * 0.7 + t * 3.0) * 0.5);
+        if (alpha < 0.02) continue;
 
-    function render(now) {
-      const t = (now - startTime) * 0.001;
+        const color = `rgba(255, ${80 + (1 - t) * 120}, ${60 + (1 - t) * 40}, ${alpha})`;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.moveTo(-lineWidthHalf - wobble, y);
+        ctx.lineTo(lineWidthHalf + wobble, y);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawWaves(time) {
+      const oceanTop = height * 0.45;
+      const oceanHeight = height - oceanTop;
+
+      // градиент океана
+      const g = ctx.createLinearGradient(0, oceanTop, 0, height);
+      g.addColorStop(0.0, "#041b3a");
+      g.addColorStop(0.4, "#03142e");
+      g.addColorStop(1.0, "#010918");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, oceanTop, width, height - oceanTop);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, oceanTop, width, height - oceanTop);
+      ctx.clip();
+
+      // набор волн — “слои звуковых линий”
+      const waveCount = 28;
+      const stepX = 24; // шаг по X: чем больше, тем легче
+      for (let i = 0; i < waveCount; i++) {
+        const t = i / (waveCount - 1 || 1);
+        const yBase = oceanTop + t * oceanHeight * 0.98;
+
+        const amp = 6 + t * 14;
+        const speed = 0.4 + t * 0.9;
+        const k1 = 0.004 + t * 0.004;
+        const k2 = 0.009 + t * 0.006;
+
+        let r = 120 + t * 80; // от голубых к почти бирюзовым
+        let gC = 180 + t * 60;
+        let bC = 255;
+
+        const brightnessBoost = 0.2 + 0.8 * (1.0 - t);
+        r = r * brightnessBoost;
+        gC = gC * brightnessBoost;
+        bC = bC * (0.8 + 0.2 * brightnessBoost);
+
+        const alpha = 0.18 + 0.35 * (1.0 - t);
+
+        ctx.beginPath();
+        for (let x = 0; x <= width + stepX; x += stepX) {
+          const phase = time * speed + x * k1 + i * 0.5;
+          const phase2 = time * (speed * 0.7) - x * k2;
+          const offset =
+            Math.sin(phase) * amp * (0.4 + 0.6 * Math.sin(time * 0.7 + i)) +
+            Math.sin(phase2) * amp * 0.35;
+
+          const y = yBase + offset;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        ctx.strokeStyle = `rgba(${r.toFixed(0)}, ${gC.toFixed(0)}, ${bC.toFixed(0)}, ${alpha.toFixed(3)})`;
+        ctx.lineWidth = 0.9;
+        ctx.shadowBlur = 0;
+        ctx.stroke();
+      }
+
+      // несколько акцентных ярких линий ближе к зрителю
+      const accentCount = 5;
+      for (let i = 0; i < accentCount; i++) {
+        const t = (i + 1) / (accentCount + 2);
+        const yBase = oceanTop + (0.4 + t * 0.55) * oceanHeight;
+
+        const amp = 10 + t * 20;
+        const speed = 0.8 + t * 1.4;
+        const k1 = 0.005 + t * 0.006;
+        const k2 = 0.008 + t * 0.008;
+
+        ctx.beginPath();
+        for (let x = 0; x <= width + stepX; x += stepX) {
+          const phase = time * speed + x * k1 - i;
+          const phase2 = time * (speed * 0.6) - x * k2;
+          const offset =
+            Math.sin(phase) * amp +
+            Math.sin(phase2) * amp * 0.5;
+
+          const y = yBase + offset;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        ctx.strokeStyle = "rgba(140, 210, 255, 0.7)";
+        ctx.lineWidth = 1.2;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "rgba(100, 190, 255, 0.9)";
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function loop(now) {
       const dt = (now - lastTime) * 0.001;
       lastTime = now;
+      const time = now * 0.001;
 
-      // затухание глича
-      if (glitchStrength > 0) {
-        glitchStrength -= dt * 2.2; // ~0.35 c
-        if (glitchStrength < 0) glitchStrength = 0;
-      }
+      drawBackground();
+      drawSun(time);
+      drawSunReflection(time);
+      drawWaves(time);
 
-      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-      gl.clearColor(0, 0, 0, 1);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-
-      gl.useProgram(program);
-      gl.uniform1f(timeLocation, t);
-      gl.uniform2f(resolutionLocation, gl.drawingBufferWidth, gl.drawingBufferHeight);
-      gl.uniform2f(mouseLocation, mouse.x, mouse.y);
-      gl.uniform1f(glitchLocation, glitchStrength);
-
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-      requestAnimationFrame(render);
+      requestAnimationFrame(loop);
     }
 
-    requestAnimationFrame(render);
+    requestAnimationFrame(loop);
   </script>
 </body>
 </html>

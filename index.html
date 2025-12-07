@@ -1,189 +1,313 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AKULADHARA</title>
-<style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: #000;
-    height: 100%;
-    font-family: 'Helvetica Neue', sans-serif;
-  }
-  #canvas { display: block; }
-  .overlay-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #ffd700;
-    text-align: center;
-    font-size: 3em;
-    pointer-events: none;
-    text-shadow: 0 0 15px #ffd700, 0 0 30px #fff;
-  }
-  #audioControl {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <title>Lotus Trance Label</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, sans-serif;
+      color: #fff;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      display: block;
+      background: radial-gradient(circle at center, #050505 0%, #000 60%, #000 100%);
+    }
+
+    .ui {
+      position: fixed;
+      left: 7vw;
+      bottom: 8vh;
+      z-index: 10;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .ui h1 {
+      font-size: clamp(1.4rem, 2.2vw, 2.8rem);
+      font-weight: 600;
+      margin-bottom: 0.7rem;
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+    }
+
+    .ui p {
+      font-size: 0.7rem;
+      opacity: 0.8;
+    }
+
+    .ui .tagline {
+      font-size: 0.65rem;
+      margin-top: 0.4rem;
+      opacity: 0.7;
+    }
+
+    .ui .divider {
+      width: 80px;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.7) 50%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      margin: 0.6rem 0 0.6rem -2px;
+    }
+
+    .corner-label {
+      position: fixed;
+      right: 4vw;
+      top: 4vh;
+      z-index: 10;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<div class="overlay-text">AKULADHARA</div>
-<audio id="audioControl" controls src="your-track.mp3"></audio>
-<script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-let w, h;
-function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
-window.addEventListener('resize', resize);
-resize();
-// Настройки мандалы
-const petals = 8;
-const fractalLevels = 3;
-const baseRadius = 120;
-const basePetalRadius = 30;
-let rotationSpeed = 0;
-let time = 0;
-let mouseHover = false;
-let mouseClick = false;
-// Цветовая палитра
-const colors = ['#0b1f5d', '#ffffff', '#d32f2f', '#ffd700'];
-// Интерактивность мыши
-canvas.addEventListener('mousemove', () => mouseHover = true);
-canvas.addEventListener('mouseleave', () => mouseHover = false);
-canvas.addEventListener('mousedown', () => mouseClick = true);
-canvas.addEventListener('mouseup', () => mouseClick = false);
-// Аудио и анализатор
-const audio = document.getElementById('audioControl');
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const analyser = audioCtx.createAnalyser();
-const source = audioCtx.createMediaElementSource(audio);
-source.connect(analyser);
-analyser.connect(audioCtx.destination);
-analyser.fftSize = 1024;
-const dataArray = new Uint8Array(analyser.frequencyBinCount);
-// BPM и пульсация
-let lastPeak = 0;
-let bpmIntensity = 0;
-// Функция рисования фрактального лепестка с золотой пылью и радиальной динамикой
-function drawFractalLine(x, y, radius, level, hue, intensity, depth=0) {
-    if(level === 0 || depth>5) return;
-    const threads = 3 + Math.floor(Math.random()*3);
-    for(let i=0; i<threads; i++){
-        let angle = Math.random()*Math.PI*2 + Math.sin(time*0.01+i*0.5)*0.5;
-        let r = radius * (0.4 + Math.random()*0.6);
-        let dx = x + r * Math.cos(angle) + (Math.random()-0.5)*5*intensity;
-        let dy = y + r * Math.sin(angle) + (Math.random()-0.5)*5*intensity;
-        // Золотая пыль с радиальной динамикой и переливами
-        for(let p=0; p<4; p++){
-            let radiusOffset = (Math.random()*r*0.5 + r*0.2) * Math.sin(time*0.01 + p);
-            let px = dx + radiusOffset * Math.cos(time*0.05 + p);
-            let py = dy + radiusOffset * Math.sin(time*0.05 + p);
-            let gradient = ctx.createRadialGradient(px, py, 0, px, py, 4);
-            gradient.addColorStop(0, `hsla(${(hue+time*Math.random()*0.5)%360},100%,80%,1)`);
-            gradient.addColorStop(1, 'rgba(255,215,0,0)');
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(px, py, 1.5, 0, Math.PI*2);
-            ctx.fill();
+  <canvas id="scene"></canvas>
+
+  <div class="ui">
+    <h1>Lotus Trance</h1>
+    <div class="divider"></div>
+    <p>Fractal sound design • High-frequency art</p>
+    <p class="tagline">Eight-petal geometry • Sonic mandala • Quantum particles</p>
+  </div>
+
+  <div class="corner-label">▲ Hyper-resonant visual for a trance label</div>
+
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let dpr = window.devicePixelRatio || 1;
+    let centerX = width / 2;
+    let centerY = height / 2;
+    let particles = [];
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      centerX = width / 2;
+      centerY = height / 2;
+    }
+
+    window.addEventListener("resize", resize);
+    resize();
+
+    // --- helpers ---
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function createParticles(count) {
+      particles = [];
+      const maxR = Math.min(width, height) * 0.6;
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          baseRadius: rand(maxR * 0.15, maxR * 0.55),
+          angle: rand(0, Math.PI * 2),
+          speed: rand(-0.0008, 0.0008),
+          size: rand(0.7, 2.1),
+          noiseAmp: rand(4, 16),
+          noiseFreq: rand(1.5, 4.0),
+          alphaPhase: rand(0, Math.PI * 2),
+        });
+      }
+    }
+
+    createParticles(420);
+
+    function drawLotus(time) {
+      const r = Math.min(width, height) * 0.18;
+      const petals = 8;
+      const wobble = 0.08;
+      const lines = 4;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(time * 0.05);
+
+      for (let j = 0; j < lines; j++) {
+        const radiusOffset = j * 6;
+        ctx.beginPath();
+        for (let i = 0; i <= 720; i++) {
+          const t = (i / 720) * Math.PI * 2;
+          const base = r + radiusOffset;
+          const petal = Math.sin((t * petals) / 2);
+          const vibrate =
+            Math.sin(t * 20 + time * 3 + j * 0.9) * base * wobble * 0.06;
+          const rr = base * (0.7 + 0.3 * Math.abs(petal)) + vibrate;
+          const x = rr * Math.cos(t);
+          const y = rr * Math.sin(t);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
         }
-        // Основная нить ветви
-        let gradientMain = ctx.createRadialGradient(dx, dy, 0, dx, dy, 4);
-        gradientMain.addColorStop(0, `hsla(${(hue+time*Math.random()*0.5)%360},100%,70%,1)`);
-        gradientMain.addColorStop(1, 'rgba(255,215,0,0)');
-        ctx.fillStyle = gradientMain;
+        const alpha = 0.24 + j * 0.08;
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.lineWidth = 0.8;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = "rgba(255,255,255,0.85)";
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawMandalaSquares(time) {
+      const baseR = Math.min(width, height) * 0.20;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(time * -0.03);
+
+      ctx.globalCompositeOperation = "lighter";
+
+      const layers = 6;
+      for (let i = 0; i < layers; i++) {
+        const t = i / (layers - 1 || 1);
+        const r = baseR * (0.6 + t * 1.2);
+        const rot =
+          time * 0.25 * (i % 2 === 0 ? 1 : -1) + t * Math.PI * 0.25;
+
+        ctx.save();
+        ctx.rotate(rot);
+
+        const shake = Math.sin(time * 6 + i) * 0.02;
+        const size = r * (1 + shake);
+        const half = size / 2;
+
         ctx.beginPath();
-        ctx.arc(dx, dy, 2,0,Math.PI*2);
-        ctx.fill();
-        drawFractalLine(dx, dy, radius*0.5, level-1, hue+20, intensity, depth+1);
+        ctx.moveTo(-half, -half);
+        ctx.lineTo(half, -half);
+        ctx.lineTo(half, half);
+        ctx.lineTo(-half, half);
+        ctx.closePath();
+
+        const alpha = 0.08 + 0.12 * (1 - t);
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.lineWidth = 0.7;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "rgba(255,255,255,0.7)";
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      ctx.restore();
     }
-}
-// Центральный вихрь золотой пыли
-function drawCentralVortex(intensity){
-    let vortexParticles = 60;
-    for(let i=0; i<vortexParticles; i++){
-        let angle = (i/ vortexParticles)*Math.PI*2 + time*0.01;
-        let radius = 10 + i*1.5 + Math.sin(time*0.02+i)*5;
-        let zVib = Math.sin(time*0.03 + i)*2; // Z-вибрация
-        let px = (radius + zVib) * Math.cos(angle);
-        let py = (radius + zVib) * Math.sin(angle);
-        let gradient = ctx.createRadialGradient(px, py, 0, px, py, 3);
-        gradient.addColorStop(0, `hsla(${(time*5 + i*6)%360},100%,85%,1)`);
-        gradient.addColorStop(1, 'rgba(255,215,0,0)');
-        ctx.fillStyle = gradient;
+
+    function drawSonicMandala(time) {
+      const baseR = Math.min(width, height) * 0.23;
+      const rings = 3;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.globalCompositeOperation = "lighter";
+
+      for (let j = 0; j < rings; j++) {
+        const tRing = j / (rings - 1 || 1);
+        const r = baseR * (1 + tRing * 0.65);
+        const amp = 10 + 26 * (1 - tRing);
+        const freq = 10 + 6 * tRing;
+
         ctx.beginPath();
-        ctx.arc(px, py, 1.8 + Math.sin(time*0.03+i)*0.5, 0, Math.PI*2);
-        ctx.fill();
-    }
-}
-// Аурная оболочка вокруг всей мандалы
-function drawAura(intensity){
-    const auraParticles = 120;
-    for(let i=0; i<auraParticles; i++){
-        let angle = (i/auraParticles)*Math.PI*2 + Math.random()*0.2;
-        let radius = baseRadius*fractalLevels + 50 + Math.sin(time*0.01+i)*15;
-        let px = radius*Math.cos(angle);
-        let py = radius*Math.sin(angle);
-        let gradient = ctx.createRadialGradient(px, py, 0, px, py, 6);
-        gradient.addColorStop(0, `hsla(${(time*3 + i*4)%360},100%,60%,${0.3 + intensity*0.5})`);
-        gradient.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(px, py, 2 + Math.random()*1.5, 0, Math.PI*2);
-        ctx.fill();
-    }
-}
-// Основная функция отрисовки
-function draw() {
-    ctx.clearRect(0,0,w,h);
-    ctx.save();
-    ctx.translate(w/2,h/2);
-    analyser.getByteFrequencyData(dataArray);
-    let intensity = Math.max(...dataArray)/256;
-    intensity = Math.pow(intensity, 1.5);
-    // BPM-подобная пульсация
-    let currentPeak = dataArray.slice(0, 20).reduce((a,b)=>a+b,0);
-    if(currentPeak - lastPeak > 50){
-        bpmIntensity = 0.3 + Math.random()*0.3;
-    } else {
-        bpmIntensity *= 0.92;
-    }
-    lastPeak = currentPeak;
-    // Пульсация центра и рандомизация
-    let pulse = Math.sin(time*0.02 + Math.random()*0.1) * 0.1 + 1;
-    let vib = (mouseHover?0.05:0) + (mouseClick?0.15:0) + intensity*0.3 + bpmIntensity;
-    // Центральный вихрь
-    drawCentralVortex(vib);
-    // Аура
-    drawAura(vib);
-    for(let layer=1; layer<=fractalLevels; layer++){
-        let r = baseRadius*layer*pulse*(0.85 + Math.random()*0.3);
-        for(let i=0;i<petals;i++){
-            let angle = i*(Math.PI*2/petals) + rotationSpeed*time + (Math.random()-0.5)*vib;
-            let zVib = Math.sin(time*0.02 + layer)*2; // Z-вибрация для всей мандалы
-            let x = (r + zVib)*Math.cos(angle);
-            let y = (r + zVib)*Math.sin(angle);
-            let hue = (time*2 + i*45 + Math.random()*30)%360;
-            drawFractalLine(x, y, basePetalRadius, fractalLevels, hue, vib);
+        for (let i = 0; i <= 1200; i++) {
+          const t = (i / 1200) * Math.PI * 2;
+          const wave =
+            Math.sin(t * freq + time * (0.9 + j * 0.3)) * amp *
+            (0.4 + 0.6 * Math.sin(t * 0.5 + j));
+          const rr = r + wave;
+          const x = rr * Math.cos(t);
+          const y = rr * Math.sin(t);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
         }
+        const alpha = 0.13 + 0.12 * (1 - tRing);
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.lineWidth = 0.9;
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = "rgba(255,255,255,0.9)";
+        ctx.stroke();
+      }
+
+      ctx.restore();
     }
-    ctx.restore();
-    time++;
-    requestAnimationFrame(draw);
-}
-// Запуск аудио-контекста после клика
-document.body.addEventListener('click', ()=> {
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-});
-draw();
-</script>
+
+    function updateAndDrawParticles(time) {
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.globalCompositeOperation = "lighter";
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.angle += p.speed;
+
+        const noise =
+          Math.sin(p.angle * p.noiseFreq + time * 2.0) * p.noiseAmp;
+        const r = p.baseRadius + noise;
+        const x = r * Math.cos(p.angle);
+        const y = r * Math.sin(p.angle);
+
+        const alpha =
+          0.12 +
+          0.18 *
+            (0.5 + 0.5 * Math.sin(time * 2.5 + p.alphaPhase + p.baseRadius * 0.01));
+
+        ctx.beginPath();
+        ctx.arc(x, y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function renderFrame(timestamp) {
+      const time = timestamp * 0.001;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      // лёгкий «шлейф» вместо полного стирания — даёт ощущение вибрации
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.fillRect(0, 0, width, height);
+
+      drawLotus(time);
+      drawMandalaSquares(time);
+      drawSonicMandala(time);
+      updateAndDrawParticles(time);
+
+      requestAnimationFrame(renderFrame);
+    }
+
+    requestAnimationFrame(renderFrame);
+  </script>
 </body>
 </html>

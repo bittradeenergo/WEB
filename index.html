@@ -86,11 +86,11 @@
     <h1>LOTUS TRANCE</h1>
     <div class="divider"></div>
     <p>Digital ocean • Mandala sun • Quantum geometry</p>
-    <p class="tagline">Blue sound waves • Red sunset reflection</p>
+    <p class="tagline">Blue sound waves • Interference reflection</p>
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v3.1</span>
+    <span>SHADER SYSTEM v3.2</span>
     <span>WEBGL / OCEAN–SUN ENGINE</span>
   </div>
 
@@ -112,8 +112,8 @@
     window.addEventListener("resize", resize);
     resize();
 
-    // мышь и глич
-    let mouse = { x: 0.5, y: 0.5 }; // 0..1
+    // мышь и глич (параллакса больше нет)
+    let mouse = { x: 0.5, y: 0.5 }; // можно оставить, на будущее
     let glitchStrength = 0.0;
 
     window.addEventListener("pointermove", (e) => {
@@ -168,44 +168,12 @@
 
       void main() {
         vec2 res = u_resolution;
-
-        // базовый uv 0..1 от экрана
-        vec2 uv = gl_FragCoord.xy / res;
-
-        // ===== параллакс от мыши + warp + glitch (из твоего блока) =====
-        vec2 m = (u_mouse - 0.5) * 2.0; // -1..1
-
-        // центрируем для вращения / варпа / глича
-        vec2 cUv = uv - 0.5;
-
-        float rotAngle = m.x * 0.6 + sin(u_time * 0.1) * 0.05;
-        float c = cos(rotAngle);
-        float s = sin(rotAngle);
-        mat2 rot = mat2(c, -s, s, c);
-        cUv = rot * cUv;
-
-        float rLen = length(cUv);
-        float warp = 1.0 + m.y * 0.25 * smoothstep(0.0, 0.7, rLen);
-        cUv *= warp;
-
+        vec2 uv = gl_FragCoord.xy / res;  // 0..1 экран
         float g = u_glitch;
-        if (g > 0.0) {
-          // работаем в "центрированных" координатах
-          vec2 uvHash = cUv * vec2(res.y, res.y); // одинаковый масштаб по осям
-          float bandNoise = hash(vec2(floor(uvHash.y * 0.06), floor(u_time * 40.0)));
-          float xShift = (bandNoise - 0.5) * 0.15 * g;
-          cUv.x += xShift;
 
-          float jitter = (hash(vec2(floor(uvHash * 0.08))) - 0.5) * 0.06 * g;
-          cUv += jitter;
-        }
-
-        // возвращаемся в uv 0..1
-        uv = cUv + 0.5;
-
-        // ===== дальше всё как в океан-солнце шейдере, но на новом uv =====
         float horizon = 0.45;
 
+        // базовый фон
         vec3 col;
         if (uv.y > horizon) {
           float t = (uv.y - horizon) / (1.0 - horizon);
@@ -225,18 +193,22 @@
           col = water;
         }
 
-        // координаты для мандалы-солнца в этих uv
+        // центр солнца на 2/3 ширины, уменьшено до 70% по размеру
         float horizonY = horizon;
-        float aspect = res.x / res.y;
-        vec2 p = vec2((uv.x - 0.5) * aspect, uv.y - horizonY);
+        float centerXNorm = 2.0 / 3.0; // 2/3 экрана
+        float sunScale = 0.7;
 
+        float aspect = res.x / res.y;
+        vec2 p = vec2((uv.x - centerXNorm) * aspect, uv.y - horizonY);
+
+        // мандала-солнце
         float mandala = 0.0;
-        mandala += waveRing(p, 0.18, 12.0, 0.02, 1.4);
-        mandala += waveRing(p, 0.25, 16.0, 0.024, 1.7);
-        mandala += waveRing(p, 0.33, 22.0, 0.028, 2.0);
+        mandala += waveRing(p, 0.18 * sunScale, 12.0, 0.02 * sunScale, 1.4);
+        mandala += waveRing(p, 0.25 * sunScale, 16.0, 0.024 * sunScale, 1.7);
+        mandala += waveRing(p, 0.33 * sunScale, 22.0, 0.028 * sunScale, 2.0);
 
         float dSun = length(p);
-        float coreBase = 0.12;
+        float coreBase = 0.12 * sunScale;
         float corePulse = coreBase + 0.01 * sin(u_time * 2.5);
         float core = 1.0 - smoothstep(corePulse - 0.005, corePulse + 0.005, dSun);
 
@@ -246,17 +218,29 @@
         col += sunColorRing * mandala * 1.3;
         col += sunColorCore * core * 1.7;
 
+        // ореол вдоль горизонта
         float haloH = coreBase * 1.8;
         float haloT = smoothstep(0.0, haloH, abs(uv.y - horizonY));
         float halo = 1.0 - haloT;
         vec3 haloColor = vec3(1.0, 0.35, 0.20);
         col += haloColor * halo * 0.18;
 
-        // ОКЕАН: линии волн
+        // ОКЕАН: волны + глич ТОЛЬКО здесь
         if (uv.y < horizon) {
+          // отдельные координаты для океана, чтобы глич не трогал небо/солнце
+          vec2 uvOcean = uv;
+
+          if (g > 0.0) {
+            float band = floor(uvOcean.y * res.y / 10.0);
+            float n = hash(vec2(band, floor(u_time * 40.0)));
+            float shift = (n - 0.5) * 0.03 * g;
+            uvOcean.x += shift;
+          }
+
           float wavesFine = 0.0;
           float wavesAccent = 0.0;
 
+          // тонкие волны (даль)
           for (int i = 0; i < 24; i++) {
             float fi = float(i);
             float tLayer = fi / 23.0;
@@ -267,8 +251,8 @@
             float k1 = 15.0 + tLayer * 10.0;
             float k2 = 5.0 + tLayer * 6.0;
 
-            float phase = u_time * speed + uv.x * k1 + fi * 0.5;
-            float phase2 = u_time * (speed * 0.7) - uv.x * k2;
+            float phase = u_time * speed + uvOcean.x * k1 + fi * 0.5;
+            float phase2 = u_time * (speed * 0.7) - uvOcean.x * k2;
 
             float offset =
               sin(phase) * amp * (0.4 + 0.6 * sin(u_time * 0.7 + fi)) +
@@ -281,18 +265,20 @@
             wavesFine += line * alpha;
           }
 
+          // толстые волны (вблизи) — опущены ниже, ближе к "камера"
           for (int i = 0; i < 5; i++) {
             float fi = float(i);
             float tLayer = (fi + 1.0) / 7.0;
-            float yBase = horizon * (0.5 + tLayer * 0.45);
+            // ближе к нижней части океана
+            float yBase = horizon * (0.10 + tLayer * 0.85);
 
             float amp = 0.02 + tLayer * 0.03;
             float speed = 0.8 + tLayer * 1.4;
             float k1 = 20.0 + tLayer * 10.0;
             float k2 = 10.0 + tLayer * 8.0;
 
-            float phase = u_time * speed + uv.x * k1 - fi;
-            float phase2 = u_time * (speed * 0.6) - uv.x * k2;
+            float phase = u_time * speed + uvOcean.x * k1 - fi;
+            float phase2 = u_time * (speed * 0.6) - uvOcean.x * k2;
 
             float offset =
               sin(phase) * amp +
@@ -310,22 +296,29 @@
 
           col += waveColorBase * wavesFine * 0.7;
           col += waveColorAccent * wavesAccent * 0.85;
-        }
 
-        // отражение солнца на воде
-        if (uv.y < horizon) {
+          // ОТРАЖЕНИЕ СОЛНЦА: мелкие штрихи / интерференция
           float tRef = (horizon - uv.y) / horizon;
           tRef = clamp(tRef, 0.0, 1.0);
 
-          float width = 0.12;
-          float dx = (uv.x - 0.5) / width;
-          float spot = exp(-dx * dx * 2.0);
+          float width = 0.10; // чуть уже
+          float dx = (uvOcean.x - centerXNorm) / width;
+          float spot = exp(-dx * dx * 2.0) * (1.0 - tRef);
 
-          float ripple = 0.5 + 0.5 * sin(u_time * 2.2 + uv.y * 80.0);
-          float reflection = spot * (1.0 - tRef) * ripple;
+          // вертикальная "штриховка"
+          float stripePhase = fract(uv.y * 80.0 - u_time * 1.2);
+          float stripe =
+            smoothstep(0.0, 0.12, stripePhase) *
+            (1.0 - smoothstep(0.70, 1.0, stripePhase));
+
+          // поперечная интерференция
+          float inter =
+            0.5 + 0.5 * sin(uvOcean.x * 220.0 + uv.y * 40.0 + u_time * 4.0);
+
+          float reflection = spot * stripe * inter;
 
           vec3 reflColor = vec3(1.0, 0.35, 0.2);
-          col += reflColor * reflection * 1.4;
+          col += reflColor * reflection * 1.5;
         }
 
         // виньетка

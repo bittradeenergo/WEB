@@ -90,7 +90,7 @@
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v1.3 (BASE)</span>
+    <span>SHADER SYSTEM v1.4 (BASE WAVES)</span>
     <span>WEBGL / OCEAN–SUN ENGINE</span>
   </div>
 
@@ -201,7 +201,7 @@
         vec2 p = vec2((uv.x - centerXNorm) * aspect, uv.y - horizonY);
         float dSun = length(p);
 
-        // КОЛЬЦА МАНДАЛЫ
+        // КОЛЬЦА МАНДАЛЫ (как в прошлой версии)
         float mandala = 0.0;
         mandala += waveRing(p, 0.18 * sunScale, 12.0, 0.02 * sunScale, 1.4, 0.003);
         mandala += waveRing(p, 0.25 * sunScale, 16.0, 0.024 * sunScale, 1.7, 0.0045);
@@ -252,7 +252,7 @@
 
           float wavesFine = 0.0;
 
-          // 24 тонких волн (как в базовой v1)
+          // --- 24 тонких волн (как в базовой v1) ---
           for (int i = 0; i < 24; i++) {
             float fi = float(i);
             float tLayer = fi / 23.0;
@@ -277,11 +277,12 @@
             wavesFine += line * alpha;
           }
 
-          // 5 крупных волн (перспектива + цвет)
+          // --- 5 крупных волн: геометрия как в базовой v1, но цвет/толщина по перспективе ---
           for (int i = 0; i < 5; i++) {
             float fi = float(i);
-            float tLayer = (fi + 1.0) / 7.0;  // 0..1: ближе к горизонту при росте
+            float tLayer = (fi + 1.0) / 7.0;  // 0..1 ближе к горизонту при росте
 
+            // ВОТ ЭТА ФОРМУЛА — КАК В БАЗОВОЙ ВЕРСИИ 1
             float yBase = horizon * (0.5 + tLayer * 0.45);
 
             float amp = 0.02 + tLayer * 0.03;

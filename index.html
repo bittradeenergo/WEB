@@ -5,219 +5,185 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AKULADHARA</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Helvetica Neue', sans-serif; background: #000; color: #fff; min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 40px;
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  z-index: 20;
-}
-.logo svg { width: 120px; height: auto; fill: #ffd700; }
-.social-icons { display: flex; gap: 15px; }
-.social-icons a svg { width: 28px; height: 28px; fill: #fff; transition: transform 0.3s, fill 0.3s; }
-.social-icons a:hover svg { transform: scale(1.2); fill: #ffd700; }
-
-main { flex: 1; position: relative; }
-#canvas { display: block; width: 100%; height: 100vh; }
-
-.logo-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 15;
-  width: 180px;
-  height: 180px;
-  opacity: 0.9;
-}
-.logo-overlay svg { width: 100%; height: 100%; fill: url(#gradientGold); }
-
-footer {
-  background: #111;
-  padding: 40px 20px;
-  display: flex;
-  justify-content: space-around;
-  gap: 40px;
-  flex-wrap: wrap;
-}
-footer .footer-column h4 { margin-bottom: 15px; font-size: 1.1em; color: #ffd700; }
-footer .footer-column a { display: block; margin-bottom: 8px; color: #fff; text-decoration: none; transition: color 0.3s; }
-footer .footer-column a:hover { color: #ffd700; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #000;
+    height: 100%;
+    font-family: 'Helvetica Neue', sans-serif;
+  }
+  #canvas { display: block; }
+  .overlay-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffd700;
+    text-align: center;
+    font-size: 3em;
+    pointer-events: none;
+    text-shadow: 0 0 15px #ffd700, 0 0 30px #fff;
+  }
+  #audioControl {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+  }
 </style>
 </head>
 <body>
-
-<header>
-  <div class="logo">
-    <svg viewBox="0 0 100 100">
-      <polygon points="50,10 90,90 10,90"/>
-      <polygon points="50,25 70,75 30,75" fill="#0b1f5d"/>
-    </svg>
-  </div>
-
-  <div class="social-icons">
-    <a href="#" target="_blank" title="Instagram">
-      <svg viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 2 .3 2.5.5.6.2 1.1.5 1.6 1 .5.5.8 1 .9 1.6.2.5.4 1.3.5 2.5.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 2-.5 2.5-.2.6-.5 1.1-1 1.6-.5.5-1 .8-1.6.9-.5.2-1.3.4-2.5.5-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-2-.3-2.5-.5-.6-.2-1.1-.5-1.6-1-.5-.5-.8-1-.9-1.6-.2-.5-.4-1.3-.5-2.5C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.3-2 .5-2.5.2-.6.5-1.1 1-1.6.5-.5 1-.8 1.6-.9.5-.2 1.3-.4 2.5-.5C8.4 2.2 8.8 2.2 12 2.2M12 0C8.7 0 8.3 0 7 .1 5.7.2 4.6.5 3.7.9 2.8 1.4 2 2 1.4 2.9c-.5.9-.8 2-.9 3.3C.1 8.3 0 8.7 0 12s.1 3.7.1 5c.1 1.3.4 2.4.9 3.3.5.9 1.1 1.7 2 2.3.9.5 2 .8 3.3.9C8.3 23.9 8.7 24 12 24s3.7-.1 5-.1c1.3-.1 2.4-.4 3.3-.9.9-.5 1.7-1.1 2.3-2 .5-.9.8-2 .9-3.3.1-1.3.1-1.7.1-5s0-3.7-.1-5c-.1-1.3-.4-2.4-.9-3.3-.5-.9-1.1-1.7-2-2.3-.9-.5-2-.8-3.3-.9C15.7.1 15.3 0 12 0zm0 5.8a6.2 6.2 0 1 0 0 12.4 6.2 6.2 0 0 0 0-12.4zm0 10.2a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.8a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8z"/></svg>
-    </a>
-    <a href="#" target="_blank" title="Facebook">
-      <svg viewBox="0 0 24 24"><path d="M22.675 0H1.325C.593 0 0 .593 0 1.325v21.351C0 23.407.593 24 1.325 24h11.495v-9.294H9.691v-3.622h3.129V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.466.099 2.797.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.762v2.311h3.587l-.467 3.622h-3.12V24h6.116C23.407 24 24 23.407 24 22.676V1.325C24 .593 23.407 0 22.675 0z"/></svg>
-    </a>
-  </div>
-</header>
-
-<main>
-  <canvas id="canvas"></canvas>
-
-  <div class="logo-overlay">
-    <svg viewBox="0 0 100 100">
-      <defs>
-        <linearGradient id="gradientGold" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#ffd700;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#fff700;stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <polygon points="50,10 90,90 10,90"/>
-      <polygon points="50,25 70,75 30,75" fill="#0b1f5d"/>
-    </svg>
-  </div>
-</main>
-
-<footer>
-  <div class="footer-column">
-    <h4>Раздел 1</h4>
-    <a href="#">О нас</a>
-    <a href="#">Новости</a>
-    <a href="#">Контакты</a>
-  </div>
-  <div class="footer-column">
-    <h4>Раздел 2</h4>
-    <a href="#">Релизы</a>
-    <a href="#">Мерч</a>
-    <a href="#">События</a>
-  </div>
-  <div class="footer-column">
-    <h4>Раздел 3</h4>
-    <a href="#">Подписка</a>
-    <a href="#">FAQ</a>
-    <a href="#">Политика конфиденциальности</a>
-  </div>
-</footer>
-
+<canvas id="canvas"></canvas>
+<div class="overlay-text">AKULADHARA</div>
+<audio id="audioControl" controls src="your-track.mp3"></audio>
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-let width = canvas.width = window.innerWidth;
-let height = canvas.height = window.innerHeight;
-
-window.addEventListener('resize', () => {
-  width = canvas.width = window.innerWidth;
-  height = canvas.height = window.innerHeight;
-});
-
-class Particle {
-  constructor(x, y, angle, distance, color){
-    this.x = x; this.y = y;
-    this.angle = angle;
-    this.distance = distance;
-    this.color = color;
-    this.size = Math.random()*1.5+0.5;
-    this.speed = Math.random()*0.002+0.001;
-    this.vx = (Math.random()-0.5)*0.3;
-    this.vy = (Math.random()-0.5)*0.3;
-    this.currentX = x + Math.cos(angle)*distance;
-    this.currentY = y + Math.sin(angle)*distance;
-  }
-  update(audioFactor=1){
-    this.angle += this.speed*audioFactor;
-    this.currentX = this.x + Math.cos(this.angle)*this.distance + this.vx*audioFactor*10;
-    this.currentY = this.y + Math.sin(this.angle)*this.distance + this.vy*audioFactor*10;
-  }
-  draw(ctx){
-    ctx.beginPath();
-    // создаем эффект вибрирующих нитей с золотой пылью
-    let gradient = ctx.createRadialGradient(this.currentX, this.currentY, 0, this.currentX, this.currentY, this.size*3);
-    gradient.addColorStop(0, this.color);
-    gradient.addColorStop(1, 'rgba(255,215,0,0)');
-    ctx.fillStyle = gradient;
-    ctx.globalAlpha = 0.8;
-    ctx.arc(this.currentX,this.currentY,this.size,0,Math.PI*2);
-    ctx.fill();
-  }
-}
-
-// параметры мандалы
-const petals = 8, layers = 5;
-const particles = [];
-const colors = ['#0b1f5d','#ff0000','#ffd700','#ffffff','#6600ff'];
-
-for(let l=1;l<=layers;l++){
-  for(let p=0;p<petals;p++){
-    for(let i=0;i<30;i++){
-      let angle = (p/petals)*Math.PI*2 + Math.random()*0.2;
-      let distance = l*30 + Math.random()*20;
-      let color = colors[Math.floor(Math.random()*colors.length)];
-      particles.push(new Particle(width/2,height/2,angle,distance,color));
-    }
-  }
-}
-
-// интерактивность мыши
-let mouse = {x:0,y:0};
-canvas.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
-canvas.addEventListener('click', e=>{
-  particles.forEach(p=>p.speed*=3); // вибрация на клик
-  setTimeout(()=>particles.forEach(p=>p.speed/=3),200);
-});
-</script>
-
-<script>
-// создаем аудио-анализатор
-let audioContext = new (window.AudioContext||window.webkitAudioContext)();
-const audio = new Audio();
-audio.src = "your_music_track.mp3"; // вставь путь к своему треку
-audio.loop = true;
-audio.autoplay = true;
-audio.crossOrigin = "anonymous";
-
-const source = audioContext.createMediaElementSource(audio);
-const analyser = audioContext.createAnalyser();
+let w, h;
+function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize);
+resize();
+// Настройки мандалы
+const petals = 8;
+const fractalLevels = 3;
+const baseRadius = 120;
+const basePetalRadius = 30;
+let rotationSpeed = 0;
+let time = 0;
+let mouseHover = false;
+let mouseClick = false;
+// Цветовая палитра
+const colors = ['#0b1f5d', '#ffffff', '#d32f2f', '#ffd700'];
+// Интерактивность мыши
+canvas.addEventListener('mousemove', () => mouseHover = true);
+canvas.addEventListener('mouseleave', () => mouseHover = false);
+canvas.addEventListener('mousedown', () => mouseClick = true);
+canvas.addEventListener('mouseup', () => mouseClick = false);
+// Аудио и анализатор
+const audio = document.getElementById('audioControl');
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const analyser = audioCtx.createAnalyser();
+const source = audioCtx.createMediaElementSource(audio);
 source.connect(analyser);
-analyser.connect(audioContext.destination);
-analyser.fftSize = 256;
+analyser.connect(audioCtx.destination);
+analyser.fftSize = 1024;
 const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-function draw(){
-  // фоновое затемнение с эффектом следа
-  ctx.fillStyle='rgba(0,0,0,0.05)';
-  ctx.fillRect(0,0,width,height);
-
-  // получаем аудио-анализ
-  analyser.getByteFrequencyData(dataArray);
-  let avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
-  let audioFactor = 1 + avg/200; // усиливаем эффект при громком звуке
-
-  // обновляем и рисуем частицы
-  particles.forEach(p=>{
-    p.update(audioFactor);
-    p.draw(ctx);
-  });
-
-  // небольшая рандомизация для уникальности каждой анимации
-  if(Math.random()<0.005){
-    particles.forEach(p=>{
-      p.vx += (Math.random()-0.5)*0.05;
-      p.vy += (Math.random()-0.5)*0.05;
-    });
-  }
-
-  requestAnimationFrame(draw);
+// BPM и пульсация
+let lastPeak = 0;
+let bpmIntensity = 0;
+// Функция рисования фрактального лепестка с золотой пылью и радиальной динамикой
+function drawFractalLine(x, y, radius, level, hue, intensity, depth=0) {
+    if(level === 0 || depth>5) return;
+    const threads = 3 + Math.floor(Math.random()*3);
+    for(let i=0; i<threads; i++){
+        let angle = Math.random()*Math.PI*2 + Math.sin(time*0.01+i*0.5)*0.5;
+        let r = radius * (0.4 + Math.random()*0.6);
+        let dx = x + r * Math.cos(angle) + (Math.random()-0.5)*5*intensity;
+        let dy = y + r * Math.sin(angle) + (Math.random()-0.5)*5*intensity;
+        // Золотая пыль с радиальной динамикой и переливами
+        for(let p=0; p<4; p++){
+            let radiusOffset = (Math.random()*r*0.5 + r*0.2) * Math.sin(time*0.01 + p);
+            let px = dx + radiusOffset * Math.cos(time*0.05 + p);
+            let py = dy + radiusOffset * Math.sin(time*0.05 + p);
+            let gradient = ctx.createRadialGradient(px, py, 0, px, py, 4);
+            gradient.addColorStop(0, `hsla(${(hue+time*Math.random()*0.5)%360},100%,80%,1)`);
+            gradient.addColorStop(1, 'rgba(255,215,0,0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(px, py, 1.5, 0, Math.PI*2);
+            ctx.fill();
+        }
+        // Основная нить ветви
+        let gradientMain = ctx.createRadialGradient(dx, dy, 0, dx, dy, 4);
+        gradientMain.addColorStop(0, `hsla(${(hue+time*Math.random()*0.5)%360},100%,70%,1)`);
+        gradientMain.addColorStop(1, 'rgba(255,215,0,0)');
+        ctx.fillStyle = gradientMain;
+        ctx.beginPath();
+        ctx.arc(dx, dy, 2,0,Math.PI*2);
+        ctx.fill();
+        drawFractalLine(dx, dy, radius*0.5, level-1, hue+20, intensity, depth+1);
+    }
 }
-
-// стартуем анимацию
+// Центральный вихрь золотой пыли
+function drawCentralVortex(intensity){
+    let vortexParticles = 60;
+    for(let i=0; i<vortexParticles; i++){
+        let angle = (i/ vortexParticles)*Math.PI*2 + time*0.01;
+        let radius = 10 + i*1.5 + Math.sin(time*0.02+i)*5;
+        let zVib = Math.sin(time*0.03 + i)*2; // Z-вибрация
+        let px = (radius + zVib) * Math.cos(angle);
+        let py = (radius + zVib) * Math.sin(angle);
+        let gradient = ctx.createRadialGradient(px, py, 0, px, py, 3);
+        gradient.addColorStop(0, `hsla(${(time*5 + i*6)%360},100%,85%,1)`);
+        gradient.addColorStop(1, 'rgba(255,215,0,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.8 + Math.sin(time*0.03+i)*0.5, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+// Аурная оболочка вокруг всей мандалы
+function drawAura(intensity){
+    const auraParticles = 120;
+    for(let i=0; i<auraParticles; i++){
+        let angle = (i/auraParticles)*Math.PI*2 + Math.random()*0.2;
+        let radius = baseRadius*fractalLevels + 50 + Math.sin(time*0.01+i)*15;
+        let px = radius*Math.cos(angle);
+        let py = radius*Math.sin(angle);
+        let gradient = ctx.createRadialGradient(px, py, 0, px, py, 6);
+        gradient.addColorStop(0, `hsla(${(time*3 + i*4)%360},100%,60%,${0.3 + intensity*0.5})`);
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + Math.random()*1.5, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+// Основная функция отрисовки
+function draw() {
+    ctx.clearRect(0,0,w,h);
+    ctx.save();
+    ctx.translate(w/2,h/2);
+    analyser.getByteFrequencyData(dataArray);
+    let intensity = Math.max(...dataArray)/256;
+    intensity = Math.pow(intensity, 1.5);
+    // BPM-подобная пульсация
+    let currentPeak = dataArray.slice(0, 20).reduce((a,b)=>a+b,0);
+    if(currentPeak - lastPeak > 50){
+        bpmIntensity = 0.3 + Math.random()*0.3;
+    } else {
+        bpmIntensity *= 0.92;
+    }
+    lastPeak = currentPeak;
+    // Пульсация центра и рандомизация
+    let pulse = Math.sin(time*0.02 + Math.random()*0.1) * 0.1 + 1;
+    let vib = (mouseHover?0.05:0) + (mouseClick?0.15:0) + intensity*0.3 + bpmIntensity;
+    // Центральный вихрь
+    drawCentralVortex(vib);
+    // Аура
+    drawAura(vib);
+    for(let layer=1; layer<=fractalLevels; layer++){
+        let r = baseRadius*layer*pulse*(0.85 + Math.random()*0.3);
+        for(let i=0;i<petals;i++){
+            let angle = i*(Math.PI*2/petals) + rotationSpeed*time + (Math.random()-0.5)*vib;
+            let zVib = Math.sin(time*0.02 + layer)*2; // Z-вибрация для всей мандалы
+            let x = (r + zVib)*Math.cos(angle);
+            let y = (r + zVib)*Math.sin(angle);
+            let hue = (time*2 + i*45 + Math.random()*30)%360;
+            drawFractalLine(x, y, basePetalRadius, fractalLevels, hue, vib);
+        }
+    }
+    ctx.restore();
+    time++;
+    requestAnimationFrame(draw);
+}
+// Запуск аудио-контекста после клика
+document.body.addEventListener('click', ()=> {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+});
 draw();
 </script>
+</body>
+</html>

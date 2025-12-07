@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Lotus Trance Label</title>
+  <title>Lotus Trance – Fractal Mandala</title>
   <style>
     * {
       box-sizing: border-box;
@@ -24,48 +24,49 @@
       position: fixed;
       inset: 0;
       display: block;
-      background: radial-gradient(circle at center, #050505 0%, #000 60%, #000 100%);
+      background:
+        radial-gradient(circle at center, #050505 0%, #000 60%, #000 100%);
     }
 
-    .ui {
+    .ui-main {
       position: fixed;
       left: 7vw;
       bottom: 8vh;
       z-index: 10;
-      text-transform: uppercase;
-      letter-spacing: 0.25em;
       pointer-events: none;
       mix-blend-mode: screen;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
     }
 
-    .ui h1 {
-      font-size: clamp(1.4rem, 2.2vw, 2.8rem);
+    .ui-main h1 {
+      font-size: clamp(1.6rem, 3vw, 3.2rem);
       font-weight: 600;
       margin-bottom: 0.7rem;
-      text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+      text-shadow: 0 0 18px rgba(255, 255, 255, 0.85);
     }
 
-    .ui p {
-      font-size: 0.7rem;
-      opacity: 0.8;
-    }
-
-    .ui .tagline {
-      font-size: 0.65rem;
-      margin-top: 0.4rem;
-      opacity: 0.7;
-    }
-
-    .ui .divider {
-      width: 80px;
+    .ui-main .divider {
+      width: 110px;
       height: 1px;
       background: linear-gradient(
         90deg,
         rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.7) 50%,
+        rgba(255, 255, 255, 0.9) 50%,
         rgba(255, 255, 255, 0) 100%
       );
-      margin: 0.6rem 0 0.6rem -2px;
+      margin: 0.6rem 0 0.7rem -4px;
+    }
+
+    .ui-main p {
+      font-size: 0.7rem;
+      opacity: 0.8;
+    }
+
+    .ui-main .tagline {
+      font-size: 0.65rem;
+      margin-top: 0.35rem;
+      opacity: 0.7;
     }
 
     .corner-label {
@@ -76,22 +77,35 @@
       font-size: 0.6rem;
       letter-spacing: 0.2em;
       text-transform: uppercase;
-      opacity: 0.5;
+      opacity: 0.55;
       pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .corner-label span {
+      display: block;
+      text-align: right;
+    }
+
+    .corner-label span:first-child {
+      margin-bottom: 0.2rem;
     }
   </style>
 </head>
 <body>
   <canvas id="scene"></canvas>
 
-  <div class="ui">
-    <h1>Lotus Trance</h1>
+  <div class="ui-main">
+    <h1>LOTUS TRANCE</h1>
     <div class="divider"></div>
-    <p>Fractal sound design • High-frequency art</p>
-    <p class="tagline">Eight-petal geometry • Sonic mandala • Quantum particles</p>
+    <p>Hyper–detailed lotus geometry • Sonic mandala engine</p>
+    <p class="tagline">Fractal waveforms • Particle field • Ritual-grade visuals</p>
   </div>
 
-  <div class="corner-label">▲ Hyper-resonant visual for a trance label</div>
+  <div class="corner-label">
+    <span>VISUAL SYSTEM v1.0</span>
+    <span>8–PETAL WHITE LOTUS / BLACK VOID</span>
+  </div>
 
   <script>
     const canvas = document.getElementById("scene");
@@ -102,7 +116,11 @@
     let dpr = window.devicePixelRatio || 1;
     let centerX = width / 2;
     let centerY = height / 2;
-    let particles = [];
+
+    let mouseX = 0;
+    let mouseY = 0;
+    let targetMouseX = 0;
+    let targetMouseY = 0;
 
     function resize() {
       width = window.innerWidth;
@@ -118,86 +136,158 @@
     window.addEventListener("resize", resize);
     resize();
 
-    // --- helpers ---
-    function rand(min, max) {
-      return min + Math.random() * (max - min);
+    window.addEventListener("pointermove", (e) => {
+      const nx = (e.clientX / width - 0.5) * 2;
+      const ny = (e.clientY / height - 0.5) * 2;
+      targetMouseX = nx;
+      targetMouseY = ny;
+    });
+
+    // --- утилита шумоподобной функции (псевдо-noise) ---
+    function pseudoNoise(t) {
+      return (
+        Math.sin(t * 1.3) * 0.5 +
+        Math.sin(t * 2.7 + 1.234) * 0.25 +
+        Math.sin(t * 5.1 + 5.678) * 0.15 +
+        Math.sin(t * 11.7 + 0.345) * 0.1
+      );
     }
 
-    function createParticles(count) {
-      particles = [];
-      const maxR = Math.min(width, height) * 0.6;
-      for (let i = 0; i < count; i++) {
-        particles.push({
-          baseRadius: rand(maxR * 0.15, maxR * 0.55),
-          angle: rand(0, Math.PI * 2),
-          speed: rand(-0.0008, 0.0008),
-          size: rand(0.7, 2.1),
-          noiseAmp: rand(4, 16),
-          noiseFreq: rand(1.5, 4.0),
-          alphaPhase: rand(0, Math.PI * 2),
-        });
+    // --- частицы ---
+    class Particle {
+      constructor(radiusMax) {
+        this.reset(radiusMax);
+      }
+
+      reset(radiusMax) {
+        this.layer = Math.random(); // 0..1 для параллакса
+        this.baseRadius = (0.15 + Math.random() * 0.85) * radiusMax;
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = (Math.random() * 0.0016 + 0.0004) * (Math.random() < 0.5 ? -1 : 1);
+        this.size = 0.7 + Math.random() * 1.7;
+        this.noiseAmp = 8 + Math.random() * 38;
+        this.noiseFreq = 1.5 + Math.random() * 4.5;
+        this.flickerPhase = Math.random() * Math.PI * 2;
+      }
+
+      update(dt, time) {
+        this.angle += this.speed * dt;
+        const n = pseudoNoise(this.angle * this.noiseFreq + time * 1.5);
+        const radius = this.baseRadius + n * this.noiseAmp;
+        const parallax = 1 + this.layer * 0.35;
+
+        const px = radius * Math.cos(this.angle) * parallax;
+        const py = radius * Math.sin(this.angle) * parallax;
+
+        const flicker =
+          0.5 + 0.5 * Math.sin(time * 3.0 + this.flickerPhase + this.baseRadius * 0.01);
+
+        const alpha = 0.07 + 0.24 * flicker * (0.3 + 0.7 * (1 - this.layer));
+
+        return { x: px, y: py, alpha };
       }
     }
 
-    createParticles(420);
+    const particles = [];
+    function initParticles() {
+      particles.length = 0;
+      const maxR = Math.min(width, height) * 0.9;
+      const count = Math.floor(600 + Math.min(width, height) * 0.2);
+      for (let i = 0; i < count; i++) {
+        particles.push(new Particle(maxR));
+      }
+    }
+    initParticles();
+    window.addEventListener("resize", initParticles);
 
+    // --- лотос (8 лепестков, суперформула-подобная штука) ---
     function drawLotus(time) {
-      const r = Math.min(width, height) * 0.18;
+      const baseR = Math.min(width, height) * 0.18;
       const petals = 8;
-      const wobble = 0.08;
-      const lines = 4;
+      const layers = 6;
 
       ctx.save();
       ctx.translate(centerX, centerY);
-      ctx.rotate(time * 0.05);
 
-      for (let j = 0; j < lines; j++) {
-        const radiusOffset = j * 6;
+      // лёгкий сдвиг от мыши (ощущение глубины)
+      const mx = mouseX * 18;
+      const my = mouseY * 18;
+      ctx.translate(mx * 0.3, my * 0.3);
+
+      ctx.globalCompositeOperation = "lighter";
+
+      for (let j = 0; j < layers; j++) {
+        const tLayer = j / (layers - 1 || 1);
+        const rMult = 0.75 + tLayer * 0.9;
+        const localR = baseR * rMult;
+        const wobble = 0.12 + 0.2 * tLayer;
+
         ctx.beginPath();
-        for (let i = 0; i <= 720; i++) {
-          const t = (i / 720) * Math.PI * 2;
-          const base = r + radiusOffset;
-          const petal = Math.sin((t * petals) / 2);
-          const vibrate =
-            Math.sin(t * 20 + time * 3 + j * 0.9) * base * wobble * 0.06;
-          const rr = base * (0.7 + 0.3 * Math.abs(petal)) + vibrate;
-          const x = rr * Math.cos(t);
-          const y = rr * Math.sin(t);
+        const steps = 1200;
+        for (let i = 0; i <= steps; i++) {
+          const t = (i / steps) * Math.PI * 2;
+
+          // суперформула-подобная форма лепестков
+          const k = petals;
+          const m = Math.sin((k * t) / 2);
+          const m2 = Math.sin((k * t) / 2 + Math.PI / 8);
+          let r =
+            localR *
+            (0.72 +
+              0.25 * Math.abs(m) +
+              0.15 * Math.abs(m2) * Math.sin(t * 0.5 + time * 0.5 + j));
+
+          const vib =
+            Math.sin(t * 22 + time * 6 + j * 0.9) * localR * wobble * 0.06 +
+            Math.sin(t * 11.3 - time * 3.4) * localR * wobble * 0.03;
+          r += vib;
+
+          const x = r * Math.cos(t);
+          const y = r * Math.sin(t);
+
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
-        const alpha = 0.24 + j * 0.08;
+
+        const alpha = 0.18 + 0.12 * (1 - tLayer);
         ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-        ctx.lineWidth = 0.8;
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 0.7 + tLayer * 0.3;
+        ctx.shadowBlur = 24;
+        ctx.shadowColor = "rgba(255,255,255,0.9)";
         ctx.stroke();
       }
 
       ctx.restore();
     }
 
+    // --- квадратно-фрактальная мандала (2 квадрата внутри лотоса + сабделы) ---
     function drawMandalaSquares(time) {
-      const baseR = Math.min(width, height) * 0.20;
+      const baseR = Math.min(width, height) * 0.22;
 
       ctx.save();
       ctx.translate(centerX, centerY);
-      ctx.rotate(time * -0.03);
-
       ctx.globalCompositeOperation = "lighter";
 
-      const layers = 6;
+      const mx = mouseX * 32;
+      const my = mouseY * 32;
+      ctx.translate(mx * 0.15, my * 0.15);
+
+      const layers = 7;
       for (let i = 0; i < layers; i++) {
-        const t = i / (layers - 1 || 1);
-        const r = baseR * (0.6 + t * 1.2);
-        const rot =
-          time * 0.25 * (i % 2 === 0 ? 1 : -1) + t * Math.PI * 0.25;
+        const tLayer = i / (layers - 1 || 1);
+        const r = baseR * (0.45 + tLayer * 1.6);
+
+        const baseRot = time * 0.18 * (i % 2 === 0 ? 1 : -1);
+        const squareRot =
+          baseRot +
+          tLayer * (Math.PI / 4) +
+          Math.sin(time * 0.8 + i) * 0.03;
 
         ctx.save();
-        ctx.rotate(rot);
+        ctx.rotate(squareRot);
 
-        const shake = Math.sin(time * 6 + i) * 0.02;
-        const size = r * (1 + shake);
+        const sizeWave = 1 + 0.05 * Math.sin(time * 4 + i * 2.3);
+        const size = r * sizeWave;
         const half = size / 2;
 
         ctx.beginPath();
@@ -207,12 +297,30 @@
         ctx.lineTo(-half, half);
         ctx.closePath();
 
-        const alpha = 0.08 + 0.12 * (1 - t);
-        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-        ctx.lineWidth = 0.7;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "rgba(255,255,255,0.7)";
+        const alphaBase = 0.12 + 0.06 * (1 - tLayer);
+        ctx.strokeStyle = `rgba(255,255,255,${alphaBase})`;
+        ctx.lineWidth = 0.6;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "rgba(255,255,255,0.8)";
         ctx.stroke();
+
+        // внутренние “фрактальные” деления по граням
+        const subdiv = 10;
+        const lowAlpha = alphaBase * 0.7;
+        ctx.strokeStyle = `rgba(255,255,255,${lowAlpha})`;
+        ctx.lineWidth = 0.4;
+
+        for (let s = 1; s < subdiv; s++) {
+          const k = s / subdiv;
+          const offset = (k - 0.5) * size;
+
+          ctx.beginPath();
+          ctx.moveTo(offset, -half);
+          ctx.lineTo(offset, half);
+          ctx.moveTo(-half, offset);
+          ctx.lineTo(half, offset);
+          ctx.stroke();
+        }
 
         ctx.restore();
       }
@@ -220,89 +328,198 @@
       ctx.restore();
     }
 
+    // --- звуковая волна-мандала по окружности (фрактальная) ---
     function drawSonicMandala(time) {
-      const baseR = Math.min(width, height) * 0.23;
-      const rings = 3;
+      const baseR = Math.min(width, height) * 0.26;
 
       ctx.save();
       ctx.translate(centerX, centerY);
       ctx.globalCompositeOperation = "lighter";
 
+      const mx = mouseX * 40;
+      const my = mouseY * 40;
+      ctx.translate(mx * 0.07, my * 0.07);
+
+      const rings = 4;
       for (let j = 0; j < rings; j++) {
         const tRing = j / (rings - 1 || 1);
-        const r = baseR * (1 + tRing * 0.65);
-        const amp = 10 + 26 * (1 - tRing);
-        const freq = 10 + 6 * tRing;
+        const r = baseR * (0.85 + tRing * 0.75);
+
+        const amp = 14 + 34 * (1 - tRing);
+        const steps = 2000;
 
         ctx.beginPath();
-        for (let i = 0; i <= 1200; i++) {
-          const t = (i / 1200) * Math.PI * 2;
-          const wave =
-            Math.sin(t * freq + time * (0.9 + j * 0.3)) * amp *
-            (0.4 + 0.6 * Math.sin(t * 0.5 + j));
+        for (let i = 0; i <= steps; i++) {
+          const t = (i / steps) * Math.PI * 2;
+
+          const baseFreq = 13 + j * 3.3;
+          const mod =
+            Math.sin(t * baseFreq + time * (1.6 + j * 0.5)) +
+            0.5 * Math.sin(t * baseFreq * 2.1 - time * 2.3) +
+            0.3 * Math.sin(t * baseFreq * 3.7 + time * 0.9);
+
+          const envelope =
+            0.5 + 0.5 * Math.sin(t * 2 + j * 1.3 + time * 0.4);
+
+          const wave = mod * amp * envelope;
           const rr = r + wave;
+
           const x = rr * Math.cos(t);
           const y = rr * Math.sin(t);
+
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
-        const alpha = 0.13 + 0.12 * (1 - tRing);
+
+        const alpha = 0.18 + 0.18 * (1 - tRing);
         ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-        ctx.lineWidth = 0.9;
-        ctx.shadowBlur = 18;
-        ctx.shadowColor = "rgba(255,255,255,0.9)";
+        ctx.lineWidth = 1.1 - tRing * 0.4;
+        ctx.shadowBlur = 26;
+        ctx.shadowColor = "rgba(255,255,255,1)";
         ctx.stroke();
       }
 
       ctx.restore();
     }
 
-    function updateAndDrawParticles(time) {
+    // --- внутреннее “ядро” – пульсирующий круг + радиальные лучи ---
+    function drawCore(time) {
       ctx.save();
       ctx.translate(centerX, centerY);
       ctx.globalCompositeOperation = "lighter";
 
+      const mx = mouseX * 25;
+      const my = mouseY * 25;
+      ctx.translate(mx * 0.2, my * 0.2);
+
+      const baseR = Math.min(width, height) * 0.055;
+      const pulse =
+        1 + 0.12 * Math.sin(time * 6.0) + 0.05 * Math.sin(time * 13.3);
+      const radius = baseR * pulse;
+
+      // ядро
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 1.6);
+      grad.addColorStop(0, "rgba(255,255,255,0.95)");
+      grad.addColorStop(0.4, "rgba(255,255,255,0.6)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // радиальные “звуковые” лучи
+      const rays = 64;
+      ctx.lineWidth = 0.9;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = "rgba(255,255,255,0.9)";
+      for (let i = 0; i < rays; i++) {
+        const a = (i / rays) * Math.PI * 2;
+        const mod =
+          0.4 +
+          0.6 *
+            (0.5 +
+              0.5 *
+                Math.sin(a * 2 + time * 7.0 + Math.sin(a * 3.5 + time * 0.7)));
+        const len = baseR * 2.1 * mod;
+        const x = Math.cos(a) * len;
+        const y = Math.sin(a) * len;
+        const alpha = 0.09 + 0.2 * mod;
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      // тонкое кольцо
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.25, 0, Math.PI * 2);
+      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = "rgba(255,255,255,0.7)";
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "rgba(255,255,255,0.8)";
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // --- частицы вокруг ---
+    function drawParticles(time, dt) {
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.globalCompositeOperation = "lighter";
+
+      const mx = mouseX * 60;
+      const my = mouseY * 60;
+      ctx.translate(mx * 0.25, my * 0.25);
+
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        p.angle += p.speed;
+        const { x, y, alpha } = p.update(dt, time);
 
-        const noise =
-          Math.sin(p.angle * p.noiseFreq + time * 2.0) * p.noiseAmp;
-        const r = p.baseRadius + noise;
-        const x = r * Math.cos(p.angle);
-        const y = r * Math.sin(p.angle);
+        const dist = Math.sqrt(x * x + y * y);
+        const maxR = Math.min(width, height) * 0.9;
+        if (dist > maxR * 1.1) {
+          p.reset(maxR);
+          continue;
+        }
 
-        const alpha =
-          0.12 +
-          0.18 *
-            (0.5 + 0.5 * Math.sin(time * 2.5 + p.alphaPhase + p.baseRadius * 0.01));
+        const glow = 10 + (1 - p.layer) * 18;
 
         ctx.beginPath();
         ctx.arc(x, y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "rgba(255,255,255,0.8)";
+        ctx.shadowBlur = glow;
+        ctx.shadowColor = "rgba(255,255,255,0.9)";
         ctx.fill();
       }
 
       ctx.restore();
     }
 
+    // --- лёгкий хало вокруг всей композиции ---
+    function drawHalo() {
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      const maxR = Math.min(width, height) * 0.48;
+      const grad = ctx.createRadialGradient(0, 0, maxR * 0.1, 0, 0, maxR);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(0.45, "rgba(255,255,255,0.18)");
+      grad.addColorStop(0.9, "rgba(255,255,255,0)");
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, maxR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    let lastTimestamp = 0;
+
     function renderFrame(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const dtMs = timestamp - lastTimestamp;
+      lastTimestamp = timestamp;
+      const dt = Math.min(dtMs, 50); // защита от лагов
       const time = timestamp * 0.001;
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, width, height);
+      // сглаживание мыши (инерция)
+      mouseX += (targetMouseX - mouseX) * 0.08;
+      mouseY += (targetMouseY - mouseY) * 0.08;
 
-      // лёгкий «шлейф» вместо полного стирания — даёт ощущение вибрации
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // “шлейф” вместо полного стирания – ощущение вибрации
       ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
       ctx.fillRect(0, 0, width, height);
 
-      drawLotus(time);
-      drawMandalaSquares(time);
+      drawHalo();
+      drawParticles(time, dt);
       drawSonicMandala(time);
-      updateAndDrawParticles(time);
+      drawMandalaSquares(time);
+      drawLotus(time);
+      drawCore(time);
 
       requestAnimationFrame(renderFrame);
     }

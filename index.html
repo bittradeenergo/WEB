@@ -90,7 +90,7 @@
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v5.3</span>
+    <span>SHADER SYSTEM v5.4</span>
     <span>WEBGL / OCEAN–SUN–SPIRAL TORUS</span>
   </div>
 
@@ -312,7 +312,7 @@
 
           col = sky;
 
-          // ===== СПИРАЛЬНЫЙ ТОР И БОЛЬШИЕ ЗВЁЗДЫ (НОЧЬ) =====
+          // ===== СПИРАЛЬНЫЙ ТОР И МЕЛКИЕ «БУСИНКИ»-ЗВЁЗДЫ (НОЧЬ) =====
           if (nightFactor > 0.0) {
             // координаты неба [-1,1]
             vec2 suv = uv * 2.0 - 1.0;
@@ -324,14 +324,14 @@
             // сплющивание по вертикали
             suv.y *= 0.60;
 
-            // медленное вращение галактики вокруг центра
-            float rotAngle = u_time * 0.03;
+            // медленное вращение галактики вокруг центра (медленнее, чем раньше)
+            float rotAngle = u_time * 0.012;
             float cr = cos(rotAngle);
             float sr = sin(rotAngle);
             mat2 rot = mat2(cr, -sr, sr, cr);
             vec2 gpos = rot * suv;
 
-            // наклон ~35° (константы, чтобы не использовать radians())
+            // наклон ~35° (константы, чтобы не вызывать radians())
             float ct = 0.8191520; // cos(35°)
             float st = 0.5735764; // sin(35°)
             mat2 tiltRot = mat2(ct, -st, st, ct);
@@ -347,7 +347,7 @@
             float thickness = 0.25;
             float ring = exp(-pow((Rlen - R0) / thickness, 2.0));
 
-            // спиральный рукав: одна спираль, логарифмическая, без "ёлочных" артефактов
+            // спиральный рукав
             float theta = atan(gpos.y, gpos.x);
             float spiralPhase = theta + 1.6 * log(Rlen + 0.20);
             float arm = exp(-pow(sin(spiralPhase) * 3.0, 2.0));
@@ -365,9 +365,9 @@
             float depthVert = 1.0 - smoothstep(-0.2, 0.7, gpos.y + 0.3);
             float depth = clamp(0.15 + 0.85 * depthSide * depthVert, 0.0, 1.0);
 
-            // масштаб ячеек зависит от глубины: ближе → крупнее звёзды / реже сетка
-            float baseScale = 16.0;
-            float depthScale = mix(baseScale * 1.6, baseScale * 0.7, depth);
+            // масштаб ячеек: ближе → чуть крупнее, но всё равно мелкие звёзды
+            float baseScale = 28.0; // больше ячеек → больше звёзд
+            float depthScale = mix(baseScale * 1.3, baseScale * 0.7, depth);
             vec2 gridCoord = gpos * depthScale;
 
             vec2 cell   = floor(gridCoord);
@@ -384,38 +384,46 @@
             float density = clamp(ring * 3.0, 0.0, 1.0);
             float presence = step(1.0 - density, baseStarNoise);
 
-            // размер звезды (радиус диска) — от ~10 до ~30 px визуально
+            // размер звезды (радиус диска) — условно до ~8 px:
+            // ближе → максимум, но не монструозные
             float sizeNoise = hash(cell + 19.31);
-            float sizeDepth = mix(0.8, 4.0, depth);
-            float starSize = sizeDepth * mix(0.8, 1.4, sizeNoise);
+            float sizeDepth = mix(0.7, 1.8, depth);        // глубина
+            float starSize = sizeDepth * mix(0.7, 1.3, sizeNoise);
+            starSize = clamp(starSize, 0.5, 2.2);          // жёсткий верхний лимит
 
-            // перевод условного размера в "sigma" для гаусса в координатах ячейки
-            float sigma = 0.05 * starSize;
+            // гауссовый «шарик» + лёгкий "крест" для бусинки
+            float sigma = 0.10 * starSize;
             float dist2 = dot(diff, diff);
-            float starShape = exp(-dist2 / (sigma * sigma + 1e-6));
+            float radial = exp(-dist2 / (sigma * sigma + 1e-6));
 
-            float star = presence * starShape;
+            float crossX = exp(-diff.x * diff.x / (0.0025 * starSize * starSize + 1e-6))
+                           * exp(-abs(diff.y) / (0.03 * starSize + 1e-6));
+            float crossY = exp(-diff.y * diff.y / (0.0025 * starSize * starSize + 1e-6))
+                           * exp(-abs(diff.x) / (0.03 * starSize + 1e-6));
+            float sparkleShape = radial + 0.35 * (crossX + crossY);
+
+            float star = presence * sparkleShape;
 
             // мерцание
-            float twinkle = 0.7 + 0.3 * sin(u_time * 2.7 + hash(cell + 101.7) * 60.0);
+            float twinkle = 0.7 + 0.3 * sin(u_time * 2.0 + hash(cell + 101.7) * 60.0);
             star *= twinkle;
 
-            // цвет: дальние — холоднее, ближние — ярче и белее
-            vec3 farCol  = vec3(0.70, 0.85, 1.35);
-            vec3 nearCol = vec3(1.25, 1.30, 1.90);
+            // цвет: лёгкий холодный голубой/белый
+            vec3 farCol  = vec3(0.75, 0.88, 1.40);
+            vec3 nearCol = vec3(1.30, 1.34, 1.90);
             vec3 starCol = mix(farCol, nearCol, depth);
 
             vec3 galaxy = starCol * star;
 
             // усиление только ночью
-            float galaxyStrength = nightFactor * 1.5;
+            float galaxyStrength = nightFactor * 1.35;
             col += galaxy * galaxyStrength;
 
-            // редкий фоновый "шум" мелких далёких звёзд
-            vec2 bgCell = floor((uv * res) * 0.35);
+            // редкий фоновый "шум" очень мелких далёких звёзд
+            vec2 bgCell = floor((uv * res) * 0.40);
             float bgN   = hash(bgCell + 123.4);
-            float bgStar = step(0.995, bgN) * smoothstep(0.0, 0.25, bgN);
-            vec3 bgCol = vec3(0.65, 0.75, 1.25);
+            float bgStar = step(0.996, bgN) * smoothstep(0.0, 0.35, bgN);
+            vec3 bgCol = vec3(0.65, 0.78, 1.25);
             col += bgCol * bgStar * nightFactor * 0.35;
           }
         } else {

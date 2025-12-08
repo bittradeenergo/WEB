@@ -90,7 +90,7 @@
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v4.9</span>
+    <span>SHADER SYSTEM v5.1</span>
     <span>WEBGL / OCEAN–SUN–TORUS GALAXY</span>
   </div>
 
@@ -282,7 +282,7 @@
         float hidden = clamp((horizonY - sunCenterY) / maxRadius, 0.0, 1.0);
         float visibility = 1.0 - hidden;
 
-        // плавные коэффициенты "заката" и "ночи" по положению солнца
+        // коэффициенты "заката" и "ночи"
         float duskFactor  = smoothstep(0.25, 0.65, hidden);
         float nightFactor = smoothstep(0.60, 0.95, hidden);
 
@@ -293,9 +293,9 @@
           float t = (uv.y - horizon) / (1.0 - horizon);
           t = clamp(t, 0.0, 1.0);
 
-          // Чистое насыщенно-голубое небо (день) — без зелени/фиолета
-          vec3 daySkyBot  = vec3(0.02, 0.20, 0.85);
-          vec3 daySkyTop  = vec3(0.06, 0.35, 1.05);
+          // Чистое насыщенно-голубое небо (день) с лёгким уходом в циан/зелёный
+          vec3 daySkyBot  = vec3(0.02, 0.32, 0.82);
+          vec3 daySkyTop  = vec3(0.06, 0.50, 1.05);
           vec3 daySky     = mix(daySkyBot, daySkyTop, t);
 
           // Тёмно-синий закат
@@ -313,17 +313,17 @@
 
           col = sky;
 
-          // ===== ГАЛАКТИКА-ТОР ТОЛЬКО НОЧЬЮ =====
+          // ===== ГАЛАКТИКА-ТОР (приближённая, крупные звёзды, кучность) ТОЛЬКО НОЧЬЮ =====
           if (nightFactor > 0.0) {
             // координаты в небе [-1,1]
             vec2 suv = uv * 2.0 - 1.0;
 
-            // сдвиг центра чуть вправо/вверх
+            // сдвиг центра чуть вправо/вниз (ближе к горизонту)
             suv.x -= 0.05;
-            suv.y += 0.05;
+            suv.y -= 0.05;
 
             // немного сплющить по вертикали
-            suv.y *= 0.55;
+            suv.y *= 0.60;
 
             // наклон "тора" градусов на 35
             float tilt = radians(35.0);
@@ -335,36 +335,46 @@
             // правый край чуть ниже (уходит под горизонт)
             gpos.y -= gpos.x * 0.20;
 
-            // параметры "тора" в экранных координатах
-            float R = 0.75;  // большой радиус (центр кольца)
-            float r = 0.18;  // толщина по радиусу
+            // параметры "тора" (больше и ближе)
+            float R = 0.80;  // большой радиус
+            float r = 0.22;  // толщина
 
             float lenp = length(gpos);
             float ringDist = abs(lenp - R);   // 0 на кольце
             float band = exp(- (ringDist * ringDist) / (r * r));  // мягкий тор
 
-            // один рукав: только часть тора (левый верх — ближе, правый низ — дальше/под море)
+            // один рукав
             float ang = atan(gpos.y, gpos.x);
             float sector = smoothstep(-0.25, 1.10, ang);
             band *= sector;
 
-            // убираем центр – "чёрная дыра", без туманности
+            // убираем центр – "чёрная дыра"
             float coreHole = smoothstep(0.10, 0.20, lenp);
             band *= coreHole;
 
             // плотность падает к краям
-            float radialFalloff = exp(-lenp * 1.4);
+            float radialFalloff = exp(-lenp * 1.2);
             float density = band * radialFalloff;
 
+            // кластеризация: отдельный шум с низкой частотой
+            vec2 clusterCell = floor(gpos * 4.0);
+            float clusterNoise = hash(clusterCell + 19.37);
+            float clusterWeight = smoothstep(0.40, 1.0, clusterNoise);
+            density *= clusterWeight;
+
             // дискретные "ячейки" для звёзд
-            vec2 starUV   = gpos * 2.8;
-            vec2 starCell = floor(starUV * res.y * 0.25);
-            vec2 cellFrac = fract(starUV * res.y * 0.25) - 0.5;
+            vec2 starUV   = gpos * 2.4;
+            vec2 starCell = floor(starUV * res.y * 0.20);
+            vec2 cellFrac = fract(starUV * res.y * 0.20) - 0.5;
 
             float baseStarNoise = hash(starCell + 37.91);
+            float extraNoise    = hash(starCell + 88.19);
 
             // вероятность звезды зависит от плотности тора
-            float prob = clamp(density * 1.8, 0.0, 1.0);
+            float prob = clamp(pow(density, 0.85) * 2.8, 0.0, 1.0);
+            // немного случайности: где-то пусто, где-то густо
+            prob *= smoothstep(0.25, 1.0, extraNoise);
+
             float starPresence = step(1.0 - prob, baseStarNoise);
 
             // "глубина": ближняя часть тора (справа, ниже) — крупнее
@@ -372,7 +382,8 @@
             float depthVert = 1.0 - smoothstep(0.25, 0.80, gpos.y + 0.25);
             float depth = clamp(0.25 + 0.75 * depthSide * depthVert, 0.0, 1.0);
 
-            float starSize = mix(0.35, 2.4, depth);
+            // диаметр ощущается 10–20 px за счёт большого starSize
+            float starSize = mix(1.0, 5.0, depth);
             float starShape = exp(-dot(cellFrac, cellFrac) / (0.008 * starSize));
             float star = starPresence * starShape;
 
@@ -390,7 +401,7 @@
             float galaxyStrength = nightFactor * 1.35;
             col += galaxy * galaxyStrength;
 
-            // редкие фоновый "микро-стат" по всему небу
+            // редкий фоновый "микро-стат" по всему небу
             vec2 bgCell = floor((uv * res) * 0.35);
             float bgN   = hash(bgCell + 123.4);
             float bgStar = step(0.996, bgN) * smoothstep(0.0, 0.25, bgN);
@@ -409,8 +420,14 @@
           water *= brighten;
 
           // днём море светлее, ночью темнее
-          float waterDayNight = mix(1.25, 0.55, hidden);
+          float waterDayNight = mix(1.35, 0.55, hidden);
           water *= waterDayNight;
+
+          // дополнительное сильное осветление горизонта при восходе/дне
+          float nearH = exp(-pow((t - 1.0) / 0.16, 2.0)); // полоса у горизонта
+          float sunUp = 1.0 - hidden;                    // чем выше солнце, тем светлее
+          vec3 horizonGlow = vec3(0.40, 0.70, 1.20);     // холодный голубой глянец
+          water += horizonGlow * nearH * sunUp * 0.55;
 
           col = water;
         }
@@ -701,7 +718,7 @@
 
     function createShader(gl, type, source) {
       const shader = gl.createShader(type);
-      gl.shaderSource(shader, source); // важно: подаём source
+      gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         console.error(gl.getShaderInfoLog(shader));

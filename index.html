@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Sea Trance – Digital Ocean Sun</title>
+  <title>Lotus Trance – Digital Ocean Sun</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
@@ -83,7 +83,7 @@
   <canvas id="scene"></canvas>
 
   <div class="ui-main">
-    <h1>SEA TRANCE</h1>
+    <h1>LOTUS TRANCE</h1>
     <div class="divider"></div>
     <p>Digital ocean • Mandala sun • Quantum geometry</p>
     <p class="tagline">Blue sound waves • Interference reflection</p>
@@ -143,89 +143,78 @@
 
       varying vec2 v_uv;
 
-      // ===== TUNE: море – градиенты для дня и ночи =====
-      // ночь: низ #09053D, горизонт #04002E
+      // ===== МОРЕ – строгие цвета =====
+      // ночь: низ #09053D, горизонт #09053D (нет градиента)
       const vec3 WATER_BOTTOM_NIGHT  = vec3(9.0/255.0,  5.0/255.0, 61.0/255.0);
-      const vec3 WATER_HORIZON_NIGHT = vec3(4.0/255.0,  0.0/255.0, 46.0/255.0);
+      const vec3 WATER_HORIZON_NIGHT = vec3(9.0/255.0,  5.0/255.0, 61.0/255.0);
       // день: низ #00194E, горизонт #00207A
       const vec3 WATER_BOTTOM_DAY    = vec3(0.0/255.0, 25.0/255.0, 78.0/255.0);
       const vec3 WATER_HORIZON_DAY   = vec3(0.0/255.0, 32.0/255.0,122.0/255.0);
 
-      // ===== TUNE: небо – сплошные цвета дня/ночи =====
-      // ночь: #04002E, день: #00207A
-      const vec3 SKY_NIGHT = vec3(4.0/255.0,  0.0/255.0, 46.0/255.0);
+      // ===== НЕБО – строгие цвета =====
+      // ночь: #09053D, день: #00207A
+      const vec3 SKY_NIGHT = vec3(9.0/255.0,  5.0/255.0, 61.0/255.0);
       const vec3 SKY_DAY   = vec3(0.0/255.0, 32.0/255.0,122.0/255.0);
 
-      // ===== TUNE: солнце – 5 колец =====
-      // радиусы (умножаются на sunScale)
-      const float R1_RADIUS = 0.14;
-      const float R2_RADIUS = 0.20;
+      // ===== СОЛНЦЕ – 5 колец =====
+      const float R1_RADIUS = 0.16;
+      const float R2_RADIUS = 0.21;
       const float R3_RADIUS = 0.26;
       const float R4_RADIUS = 0.31;
       const float R5_RADIUS = 0.36;
 
-      // частоты по углу
       const float R1_FREQ = 10.0;
       const float R2_FREQ = 13.0;
       const float R3_FREQ = 16.0;
       const float R4_FREQ = 20.0;
       const float R5_FREQ = 26.0;
 
-      // амплитуды (умножаются на sunScale)
       const float R1_AMP = 0.018;
       const float R2_AMP = 0.020;
       const float R3_AMP = 0.023;
       const float R4_AMP = 0.026;
       const float R5_AMP = 0.030;
 
-      // скорости
       const float R1_SPEED = 1.1;
       const float R2_SPEED = 1.3;
       const float R3_SPEED = 1.6;
       const float R4_SPEED = 1.9;
       const float R5_SPEED = 2.3;
 
-      // толщины линий (от тонкого к толстому наружу)
-      const float R1_WIDTH = 0.0029;
-      const float R2_WIDTH = 0.0034;
+      const float R1_WIDTH = 0.0025;
+      const float R2_WIDTH = 0.0032;
       const float R3_WIDTH = 0.0040;
       const float R4_WIDTH = 0.0048;
       const float R5_WIDTH = 0.0060;
 
-      // интенсивность
       const float R1_INTENS = 1.2;
       const float R2_INTENS = 1.1;
       const float R3_INTENS = 1.0;
       const float R4_INTENS = 0.9;
       const float R5_INTENS = 0.8;
 
-      // цветовой градиент колец (внутренние -> внешние)
       const vec3 RING_COLOR_INNER = vec3(1.25, 0.40, 0.16);
       const vec3 RING_COLOR_OUTER = vec3(0.90, 0.12, 0.05);
 
-      // ===== TUNE: 5 толстых волн =====
-      // позиция по вертикали (доля от горизонта вниз)
+      // ===== ВОЛНЫ =====
       const float W1_POS = 0.12;
       const float W2_POS = 0.22;
       const float W3_POS = 0.34;
       const float W4_POS = 0.50;
       const float W5_POS = 0.70;
 
-      // амплитуда
       const float W1_AMP = 0.035;
       const float W2_AMP = 0.032;
       const float W3_AMP = 0.030;
       const float W4_AMP = 0.027;
       const float W5_AMP = 0.024;
 
-      // скорость
       const float W1_SPEED = 1.2;
       const float W2_SPEED = 1.0;
       const float W3_SPEED = 0.9;
       const float W4_SPEED = 0.8;
       const float W5_SPEED = 0.7;
 
-      // частоты по х
       const float W1_FREQ1 = 24.0;
       const float W2_FREQ1 = 22.0;
       const float W3_FREQ1 = 20.0;
@@ -238,21 +227,18 @@
       const float W4_FREQ2 =  8.0;
       const float W5_FREQ2 =  7.0;
 
-      // толщины линий
       const float W1_WIDTH = 0.0045;
       const float W2_WIDTH = 0.0040;
       const float W3_WIDTH = 0.0035;
       const float W4_WIDTH = 0.0030;
       const float W5_WIDTH = 0.0025;
 
-      // прозрачность
       const float W1_ALPHA = 1.0;
       const float W2_ALPHA = 0.9;
       const float W3_ALPHA = 0.75;
       const float W4_ALPHA = 0.6;
       const float W5_ALPHA = 0.5;
 
-      // смешивание цвета волны: 0 = белый, 1 = синий
       const float W1_BLEND = 0.0;
       const float W2_BLEND = 0.25;
       const float W3_BLEND = 0.45;
@@ -296,32 +282,28 @@
         float sunScale = 0.7;
         float aspect = res.x / res.y;
 
-        // цикл: солнце ходит вверх-вниз
+        // движение солнца
         float sunPhase = u_time * 0.05;
         float sunOffset = -cos(sunPhase) * 0.30; // t=0 -> -0.30: солнце под горизонтом
         float sunCenterY = horizonY + sunOffset;
 
-        // координаты относительно солнца
         vec2 p = vec2((uv.x - centerXNorm) * aspect, uv.y - sunCenterY);
         float dSun = length(p);
         float angle = atan(p.y, p.x);
 
-        // насколько солнце "спрятано" под горизонтом
         float maxRadius = R5_RADIUS * sunScale;
-        float hidden = clamp((horizonY - sunCenterY) / maxRadius, 0.0, 1.0); // 0 = над, 1 = глубоко под
-        float visibility = 1.0 - hidden; // 1 = полностью над горизонтом
-
-        float sunUp = visibility; // читаемее
+        float hidden = clamp((horizonY - sunCenterY) / maxRadius, 0.0, 1.0); // 0 = над, 1 = под
+        float visibility = 1.0 - hidden; // 1 = солнце над горизонтом
+        float sunUp = visibility;
 
         vec3 col;
 
-        // фон: небо и море с учётом положения солнца
+        // ===== ФОН: НЕБО / МОРЕ =====
         if (uv.y > horizon) {
-          // НЕБО: без градиентов – просто плавный переход между двумя цветами
+          // Небо – строгий переход между двумя цветами, без дополнительных эффектов
           vec3 sky = mix(SKY_NIGHT, SKY_DAY, sunUp);
           col = sky;
         } else {
-          // МОРЕ: градиент зависит от того, над или под горизонтом солнце
           float t = uv.y / horizon;
           t = clamp(t, 0.0, 1.0);
 
@@ -334,7 +316,7 @@
 
         float aboveHorizon = step(horizon, uv.y);
 
-        // ===== 5 колец солнца =====
+        // ===== СОЛНЕЧНЫЕ КОЛЬЦА =====
         vec3 ringsColor = vec3(0.0);
 
         float t1 = 0.00;
@@ -399,7 +381,7 @@
           ringsColor += c * mask;
         }
 
-        // ядро солнца – "звуковое"
+        // ядро солнца – звуковое
         float coreBase = 0.12 * sunScale;
         float coreMask = 1.0 - smoothstep(coreBase, coreBase + 0.005, dSun);
         float rNorm = dSun / coreBase;
@@ -415,11 +397,10 @@
         vec3 coreHotCol  = vec3(1.35, 0.45, 0.12);
         vec3 sunColorCore = mix(coreBaseCol, coreHotCol, pow(soundPattern, 1.2));
 
-        // солнце только выше горизонта
         col += aboveHorizon * ringsColor;
         col += aboveHorizon * sunColorCore * coreMask * 1.7;
 
-        // ореол вдоль горизонта
+        // ореол (оставил, но он добавляется сверху, не меняя базовый цвет неба/моря как таковой)
         float haloH = coreBase * 1.8;
         float haloT = smoothstep(0.0, haloH, abs(uv.y - horizonY));
         float halo = 1.0 - haloT;
@@ -427,7 +408,7 @@
         float haloIntensity = mix(0.14, 0.42, hidden);
         col += step(horizon, uv.y) * (haloColor * halo * haloIntensity);
 
-        // ===== ОКЕАН: волны + глич =====
+        // ===== ОКЕАН: волны + глич только в воде =====
         if (uv.y < horizon) {
           vec2 uvOcean = uv;
 
@@ -440,7 +421,6 @@
 
           float wavesFine = 0.0;
 
-          // тонкие волны (даль)
           for (int i = 0; i < 24; i++) {
             float fi = float(i);
             float tLayer = fi / 23.0;
@@ -464,8 +444,6 @@
             float alpha = 0.4 * (1.0 - tLayer);
             wavesFine += line * alpha;
           }
-
-          // 5 толстых волн – каждая с отдельными настройками
 
           // W1
           {
@@ -572,11 +550,10 @@
             col += waveCol * line * W5_ALPHA;
           }
 
-          // тонкие волны подсвечиваем
           vec3 waveColorBase = vec3(0.30, 0.60, 1.00);
           col += waveColorBase * wavesFine * 0.7;
 
-          // отражение солнца – интенсивность зависит от visibility
+          // отражение солнца
           float tRef = (horizon - uv.y) / horizon;
           tRef = clamp(tRef, 0.0, 1.0);
 
@@ -593,22 +570,13 @@
             0.5 + 0.5 * sin(uvOcean.x * 220.0 + uv.y * 40.0 + u_time * 4.0);
 
           float reflection = spot * stripe * inter;
-          reflection *= pow(visibility, 1.2); // плавно появляется/исчезает
+          reflection *= pow(visibility, 1.2);
 
           vec3 reflColor = vec3(1.0, 0.32, 0.18);
           col += reflColor * reflection * 1.5;
         }
 
-        // виньетка
-        vec2 centered = (gl_FragCoord.xy - 0.5 * res) / res.y;
-        float r = length(centered);
-        float vignette = smoothstep(1.4, 0.4, r);
-        col *= vignette;
-
-        // filmic
-        col = 1.0 - exp(-col);
-        col = clamp(col, 0.0, 1.0);
-
+        // БЕЗ виньетки и БЕЗ тонемапа — чистые цвета
         gl_FragColor = vec4(col, 1.0);
       }
     `;

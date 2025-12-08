@@ -90,7 +90,7 @@
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v6.3</span>
+    <span>SHADER SYSTEM v6.9</span>
     <span>WEBGL / OCEAN–SUN–SOUND SKY</span>
   </div>
 
@@ -262,67 +262,74 @@
         return lineAround(d, width);
       }
 
-      // Психоделическое "саунд"-звёздное небо
+      // Психоделическое "саунд"-звёздное небо с 3D-ритмами
       vec3 starField(vec2 uv) {
         vec3 result = vec3(0.0);
 
-        // нормируем к квадрату, центрируем
         float minDim = min(u_resolution.x, u_resolution.y);
         vec2 p = (uv * u_resolution - 0.5 * u_resolution) / minDim;
 
-        float r = length(p);
-        float a = atan(p.y, p.x);
+        // медленное вращение "пространства"
+        float rot = u_time * 0.02;
+        float cr = cos(rot);
+        float sr = sin(rot);
+        mat2 R = mat2(cr, -sr, sr, cr);
+        vec2 pRot = R * p;
 
-        // несколько "частотных" полос по радиусу – как спектр
-        float band1 = 0.25 + 0.10 * sin(a * 6.0  + u_time * 0.4);
-        float band2 = 0.55 + 0.08 * sin(a * 11.0 - u_time * 0.6);
-        float band3 = 0.85 + 0.06 * sin(a * 18.0 + u_time * 0.9);
+        float r = length(pRot);
+        float a = atan(pRot.y, pRot.x);
 
-        float m1 = exp(-pow((r - band1) * 5.0, 2.0));
-        float m2 = exp(-pow((r - band2) * 6.0, 2.0));
-        float m3 = exp(-pow((r - band3) * 7.0, 2.0));
+        // спектральные полосы – как частотные бэнды
+        float bandA = 0.5 + 0.5 * sin(a * 4.0  + r * 10.0 + u_time * 0.7);
+        float bandB = 0.5 + 0.5 * sin(a * 9.0  - r * 15.0 - u_time * 1.1);
+        float bandC = 0.5 + 0.5 * sin(pRot.y * 16.0 + u_time * 1.9);
 
-        float waveMask = m1 + m2 * 0.8 + m3 * 0.6;
+        float spectral = bandA * 0.45 + bandB * 0.35 + bandC * 0.35;
+        spectral = clamp(spectral, 0.0, 1.0);
 
-        // "бит" частот — лёгкая модуляция по радиусу, как осциллограммы
-        float beat =
-          0.35 + 0.35 * sin(r * 18.0 - u_time * 1.5) +
-          0.30 * sin(r * 33.0 + u_time * 2.7 + a * 4.0);
+        // слой далёких звёзд
+        vec2 gFar = pRot * 32.0;
+        vec2 cellFar = floor(gFar);
+        vec2 fFar = fract(gFar) - 0.5;
+        float nFar = hash(cellFar + 13.7);
 
-        waveMask *= clamp(beat, 0.0, 1.0);
+        float probFar = spectral * 0.65;
+        float starFar = step(1.0 - probFar, nFar);
+        float shapeFar = exp(-dot(fFar, fFar) * 90.0);
+        float twFar = 0.6 + 0.4 * sin(u_time * 3.0 + nFar * 60.0);
+        starFar *= shapeFar * twFar;
 
-        // базовая сетка "ячеек" для звёзд
-        vec2 grid = p * 30.0;
-        vec2 cell = floor(grid);
-        vec2 f = fract(grid) - 0.5;
+        vec3 colFar = vec3(0.70, 0.90, 1.30);
+        result += colFar * starFar;
 
-        float n = hash(cell + 21.7);
+        // слой "бусин" ближе к зрителю – эффект глубины
+        vec2 gNear = pRot * 18.0;
+        vec2 cellNear = floor(gNear);
+        vec2 fNear = fract(gNear) - 0.5;
+        float nNear = hash(cellNear + 91.3);
 
-        // шанс появления звезды зависит от waveMask
-        float density = clamp(waveMask * 1.4, 0.0, 0.9);
-        float star = step(1.0 - density, n);
+        float depth = clamp(1.2 - r * 1.5, 0.0, 1.0); // ближе к центру – "глубже"
+        float probNear = spectral * (0.4 + 0.6 * depth);
+        float starNear = step(1.0 - probNear, nNear);
 
-        // звезда как маленький "бусинчатый" спот
-        float shape = exp(-dot(f, f) * 85.0);
+        float sizeNear = mix(0.25, 0.9, depth);
+        float shapeNear = exp(-dot(fNear, fNear) / (0.015 * sizeNear));
 
-        // мерцание
-        float tw = 0.55 + 0.45 * sin(u_time * 3.3 + n * 70.0);
-        star *= shape * tw;
+        float twNear = 0.55 + 0.45 * sin(u_time * 2.1 + nNear * 80.0 + r * 12.0);
+        starNear *= shapeNear * twNear;
 
-        // цвет: холодный спектр, слегка зависящий от угла (как панорама частот)
-        float hueMix = 0.5 + 0.5 * sin(a * 3.0 + r * 5.0);
-        vec3 colCold = vec3(0.75, 0.95, 1.45);
-        vec3 colHot  = vec3(1.20, 0.95, 0.85);
-        vec3 starCol = mix(colHot, colCold, hueMix);
+        vec3 colNear1 = vec3(0.90, 1.10, 1.50);
+        vec3 colNear2 = vec3(1.25, 1.00, 0.90);
+        vec3 colNear = mix(colNear2, colNear1, 0.5 + 0.5 * sin(a * 2.0));
 
-        result += starCol * star;
+        result += colNear * starNear;
 
-        // дополнительный "шумовой" слой очень мелких искр
-        float tiny = pow(hash(p * vec2(91.3, 47.9)), 18.0);
-        vec3 tinyCol = vec3(0.55, 0.80, 1.40);
-        result += tinyCol * tiny * 0.7;
+        // "ткань" пространства – очень мелкие искры
+        float fabric = pow(hash(pRot * vec2(73.1, 41.3)), 20.0);
+        vec3 fabricCol = vec3(0.30, 0.55, 0.90);
+        result += fabricCol * fabric * 0.6;
 
-        // меньше звёзд у самого горизонта (жёстко на horizon=0.45)
+        // гашим к горизонту
         float h = (uv.y - 0.45) / (1.0 - 0.45);
         h = clamp(h, 0.0, 1.0);
         result *= h;
@@ -353,6 +360,10 @@
         float duskFactor  = smoothstep(0.25, 0.65, hidden);
         float nightFactor = smoothstep(0.60, 0.95, hidden);
 
+        // цвет, в который сливаются море и небо, когда солнце глубоко под горизонтом
+        vec3 UNIFY_COLOR = vec3(0.006, 0.028, 0.075);
+        float unify = smoothstep(0.55, 0.90, hidden);
+
         vec3 col;
 
         // ===== ДИНАМИЧЕСКОЕ НЕБО + "саунд"-звёзды =====
@@ -360,7 +371,7 @@
           float t = (uv.y - horizon) / (1.0 - horizon);
           t = clamp(t, 0.0, 1.0);
 
-          // чистое насыщенно-голубое небо с лёгким циановым оттенком
+          // чистое насыщенно-голубое небо с лёгким уходом в циан
           vec3 daySkyBot  = vec3(0.02, 0.32, 0.82);
           vec3 daySkyTop  = vec3(0.06, 0.50, 1.05);
           vec3 daySky     = mix(daySkyBot, daySkyTop, t);
@@ -378,13 +389,15 @@
           vec3 skyDayDusk = mix(daySky, duskSky, duskFactor);
           vec3 sky        = mix(skyDayDusk, nightSky, nightFactor);
 
+          // слияние неба с морем по цвету, когда солнце далеко под горизонтом
+          sky = mix(sky, UNIFY_COLOR, unify);
+
           col = sky;
 
-          // плавная видимость звёзд: начинают появляться уже в сумерках, плавно исчезают на рассвете
-          float starPhase = smoothstep(0.30, 0.90, hidden); // 0..1
+          // звезды: плавное появление/исчезание по фазе ночи
+          float starPhase = smoothstep(0.30, 0.90, hidden);
           if (starPhase > 0.001) {
             vec3 stars = starField(uv);
-            // чуть ярче в глубокую ночь, мягче в сумерках
             float starIntensity = 0.6 + 0.7 * nightFactor;
             col += stars * starIntensity * starPhase;
           }
@@ -404,8 +417,11 @@
 
           float nearH = exp(-pow((t - 1.0) / 0.16, 2.0));
           float sunUp = 1.0 - hidden;
-          vec3 horizonGlow = vec3(0.40, 0.70, 1.20);
-          water += horizonGlow * nearH * sunUp * 0.55;
+          vec3 horizonGlowWater = vec3(0.40, 0.70, 1.20);
+          water += horizonGlowWater * nearH * sunUp * 0.55;
+
+          // слияние с небом по цвету, когда солнце скрыто
+          water = mix(water, UNIFY_COLOR, unify);
 
           col = water;
         }
@@ -498,11 +514,16 @@
         col += aboveHorizon * ringsColor;
         col += aboveHorizon * sunColorCore * coreMask * 1.7;
 
+        // ореол вдоль горизонта: два мягких "пика" — после заката и перед рассветом
         float haloH = coreBase * 1.8;
         float haloT = smoothstep(0.0, haloH, abs(uv.y - horizonY));
         float halo = 1.0 - haloT;
         vec3 haloColor = vec3(0.90, 0.23, 0.13);
-        float haloIntensity = mix(0.14, 0.42, hidden);
+
+        float edgeGlow1 = exp(-pow((hidden - 0.18) / 0.20, 2.0));
+        float edgeGlow2 = exp(-pow((hidden - 0.82) / 0.20, 2.0));
+        float haloIntensity = 0.45 * (edgeGlow1 + edgeGlow2);
+
         col += step(horizon, uv.y) * (haloColor * halo * haloIntensity);
 
         // ===== ОКЕАН: волны + глич =====

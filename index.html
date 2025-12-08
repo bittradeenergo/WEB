@@ -312,62 +312,50 @@
 
           col = sky;
 
-          // ===== СПИРАЛЬНАЯ ГАЛАКТИКА (один рукав, кино-стиль без тумана) =====
+          // ===== СПИРАЛЬНАЯ ГАЛАКТИКА (один рукав) =====
           if (nightFactor > 0.0) {
-            // координаты неба [-1,1]
             vec2 suv = uv * 2.0 - 1.0;
 
-            // сдвиг центра галактики
             suv.x -= 0.05;
             suv.y += 0.05;
 
-            // диск (тор / наклонённый диск)
             suv.y *= 0.55;
 
-            // наклон ~35°
             float tilt = radians(35.0);
             float ct = cos(tilt);
             float st = sin(tilt);
             mat2 tiltRot = mat2(ct, -st, st, ct);
             vec2 gpos = tiltRot * suv;
 
-            // правый край ниже
             gpos.y -= gpos.x * 0.20;
 
             float r  = length(gpos);
             float th = atan(gpos.y, gpos.x);
 
-            // логарифмическая спираль одного рукава
             float tightness = 4.0;
             float spiralCoord = th + log(r + 0.05) * tightness;
             float armWidth = 0.35;
             float armMask = exp(-(spiralCoord * spiralCoord) / armWidth);
 
-            // один рукав – сектор по углу (левый край вверх, правый под горизонтом)
             float sector = smoothstep(-0.30, 0.65, th);
             armMask *= sector;
 
-            // подавление в самом центре — "чёрная дыра", без туманностей
             float coreHole = smoothstep(0.10, 0.20, r);
             armMask *= coreHole;
 
-            // падение плотности к краю
             float radialFalloff = exp(-r * 1.8);
             float density = armMask * radialFalloff;
 
-            // семплинг звёзд
             vec2 starUV = gpos * vec2(3.0, 2.0);
             vec2 starCell = floor(starUV * res.y * 0.25);
             vec2 cellFrac = fract(starUV * res.y * 0.25) - 0.5;
 
             float baseStarNoise = hash(starCell + 91.73);
 
-            // вероятность звезды зависит от плотности рукава
             float prob = density * 1.6;
             prob = clamp(prob, 0.0, 1.0);
             float starPresence = step(1.0 - prob, baseStarNoise);
 
-            // глубина: ближе к центру и зрителю — крупнее
             float depth = clamp(1.25 - r * 1.6, 0.0, 1.0);
             float starSize = mix(0.3, 1.9, depth);
 
@@ -375,11 +363,9 @@
 
             float star = starPresence * starShape;
 
-            // мерцание
             float starTwinkle = 0.75 + 0.25 * sin(u_time * 3.0 + baseStarNoise * 60.0);
             star *= starTwinkle;
 
-            // цвет звезды: почти белый, с лёгким холодным синим, чуть теплее ближе к центру
             float hotFactor = smoothstep(0.2, 0.5, r) * (1.0 - smoothstep(0.5, 1.2, r));
             vec3 coldCol = vec3(0.90, 0.95, 1.20);
             vec3 warmCol = vec3(1.25, 1.15, 0.95);
@@ -387,7 +373,6 @@
 
             vec3 galaxy = starCol * star;
 
-            // усиливаем только там, где ночь
             float galaxyStrength = nightFactor * 1.25;
             col += galaxy * galaxyStrength;
           }
@@ -556,10 +541,8 @@
 
             float w1Mask = clamp(line * 1.6, 0.0, 1.0);
 
-            // делаем её реально непрозрачной белой
             col = mix(col, vec3(1.0, 1.0, 1.0), w1Mask);
 
-            // лёгкий голубой глоу
             vec3 waveColGlow = mix(WAVE_COLOR_NEAR_WHITE, WAVE_COLOR_BLUE, W1_BLEND);
             col += waveColGlow * line * 0.35;
           }
@@ -687,7 +670,7 @@
 
     function createShader(gl, type, source) {
       const shader = gl.createShader(type);
-      gl.shaderSource(shader);
+      gl.shaderSource(shader, source); // <-- важный фикс
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         console.error(gl.getShaderInfoLog(shader));

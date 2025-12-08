@@ -144,16 +144,16 @@
       varying vec2 v_uv;
 
       // ===== TUNE: море – градиент снизу до горизонта =====
-      const vec3 WATER_BOTTOM_COLOR  = vec3(0.002, 0.015, 0.05);
-      const vec3 WATER_HORIZON_COLOR = vec3(0.020, 0.080, 0.22);
+      const vec3 WATER_BOTTOM_COLOR  = vec3(0.0078, 0.0392, 0.1020);   // deep ocean
+      const vec3 WATER_HORIZON_COLOR = vec3(0.0235, 0.2353, 0.5608);   // bright blue horizon
 
       // ===== TUNE: солнце – 5 колец =====
       // радиусы (умножаются на sunScale)
-      const float R1_RADIUS = 0.16;
-      const float R2_RADIUS = 0.21;
-      const float R3_RADIUS = 0.26;
-      const float R4_RADIUS = 0.31;
-      const float R5_RADIUS = 0.36;
+      const float R1_RADIUS = 0.12;
+      const float R2_RADIUS = 0.18;
+      const float R3_RADIUS = 0.24;
+      const float R4_RADIUS = 0.28;
+      const float R5_RADIUS = 0.32;
 
       // частоты по углу
       const float R1_FREQ = 10.0;
@@ -177,11 +177,11 @@
       const float R5_SPEED = 2.3;
 
       // толщины линий
-      const float R1_WIDTH = 0.0025;
-      const float R2_WIDTH = 0.0032;
+      const float R1_WIDTH = 0.0060;
+      const float R2_WIDTH = 0.0048;
       const float R3_WIDTH = 0.0040;
-      const float R4_WIDTH = 0.0048;
-      const float R5_WIDTH = 0.0060;
+      const float R4_WIDTH = 0.0032;
+      const float R5_WIDTH = 0.0025;
 
       // интенсивность
       const float R1_INTENS = 1.2;
@@ -230,10 +230,10 @@
       const float W5_FREQ2 =  7.0;
 
       // толщины линий
-      const float W1_WIDTH = 0.0045;
-      const float W2_WIDTH = 0.0040;
-      const float W3_WIDTH = 0.0035;
-      const float W4_WIDTH = 0.0030;
+      const float W1_WIDTH = 0.0065;
+      const float W2_WIDTH = 0.0050;
+      const float W3_WIDTH = 0.0040;
+      const float W4_WIDTH = 0.0032;
       const float W5_WIDTH = 0.0025;
 
       // прозрачность
@@ -474,7 +474,7 @@
             float yTarget = yBase + offset;
             float line = lineAround(uv.y - yTarget, W1_WIDTH);
             vec3 waveCol = mix(WAVE_COLOR_NEAR_WHITE, WAVE_COLOR_BLUE, W1_BLEND);
-            col += waveCol * line * W1_ALPHA;
+            col += waveCol * line * (W1_ALPHA * 1.4);   // усилить белую волну на 40%
           }
 
           // W2

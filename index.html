@@ -90,8 +90,8 @@
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v5.2</span>
-    <span>WEBGL / OCEAN–SUN–TORUS GALAXY</span>
+    <span>SHADER SYSTEM v5.3</span>
+    <span>WEBGL / OCEAN–SUN–SPIRAL TORUS</span>
   </div>
 
   <script>
@@ -273,7 +273,7 @@
         float sunScale = 0.7;
         float aspect = res.x / res.y;
 
-        // цикл солнца (восход → зенит → закат → ночь)
+        // цикл солнца (восход → день → закат → ночь)
         float sunPhase = u_time * 0.05;
         float sunOffset = -cos(sunPhase) * 0.30;
         float sunCenterY = horizonY + sunOffset;
@@ -282,7 +282,6 @@
         float hidden = clamp((horizonY - sunCenterY) / maxRadius, 0.0, 1.0);
         float visibility = 1.0 - hidden;
 
-        // коэффициенты "заката" и "ночи"
         float duskFactor  = smoothstep(0.25, 0.65, hidden);
         float nightFactor = smoothstep(0.60, 0.95, hidden);
 
@@ -293,7 +292,7 @@
           float t = (uv.y - horizon) / (1.0 - horizon);
           t = clamp(t, 0.0, 1.0);
 
-          // чистое насыщенно-голубое небо с лёгким уходом в циан
+          // чистое насыщенно-голубое небо с лёгким циановым уклоном
           vec3 daySkyBot  = vec3(0.02, 0.32, 0.82);
           vec3 daySkyTop  = vec3(0.06, 0.50, 1.05);
           vec3 daySky     = mix(daySkyBot, daySkyTop, t);
@@ -313,108 +312,111 @@
 
           col = sky;
 
-          // ===== ГАЛАКТИКА-ТОР (крупные звёзды, рандом, вращение) ТОЛЬКО НОЧЬЮ =====
+          // ===== СПИРАЛЬНЫЙ ТОР И БОЛЬШИЕ ЗВЁЗДЫ (НОЧЬ) =====
           if (nightFactor > 0.0) {
             // координаты неба [-1,1]
             vec2 suv = uv * 2.0 - 1.0;
 
-            // смещение центра чуть вправо/вниз
+            // лёгкий сдвиг центра
             suv.x -= 0.05;
             suv.y -= 0.05;
 
-            // лёгкое сплющивание
+            // сплющивание по вертикали
             suv.y *= 0.60;
 
-            // медленное вращение галактики вокруг своего центра
+            // медленное вращение галактики вокруг центра
             float rotAngle = u_time * 0.03;
             float cr = cos(rotAngle);
             float sr = sin(rotAngle);
             mat2 rot = mat2(cr, -sr, sr, cr);
             vec2 gpos = rot * suv;
 
-            // наклон 35 градусов (константы вместо radians() для WebGL 1.0)
+            // наклон ~35° (константы, чтобы не использовать radians())
             float ct = 0.8191520; // cos(35°)
             float st = 0.5735764; // sin(35°)
             mat2 tiltRot = mat2(ct, -st, st, ct);
             gpos = tiltRot * gpos;
 
-            // правый край ниже (под горизонт)
-            gpos.y -= gpos.x * 0.20;
+            // правый край ниже, уходит под горизонт
+            gpos.y -= gpos.x * 0.25;
 
-            // параметры "тора"
-            float R = 0.80;  // большой радиус
-            float r = 0.22;  // толщина
+            float Rlen = length(gpos);
 
-            float lenp = length(gpos);
-            float ringDist = abs(lenp - R);
-            float band = exp(-(ringDist * ringDist) / (r * r)); // мягкий тор
+            // тор: кольцо радиуса R0 и толщины thickness
+            float R0 = 0.90;
+            float thickness = 0.25;
+            float ring = exp(-pow((Rlen - R0) / thickness, 2.0));
 
-            // спиральная модуляция по углу — эффект рукава
-            float ang = atan(gpos.y, gpos.x);
-            float spiral = 0.5 + 0.5 * sin(ang * 3.0 - u_time * 0.15);
-            band *= spiral;
+            // спиральный рукав: одна спираль, логарифмическая, без "ёлочных" артефактов
+            float theta = atan(gpos.y, gpos.x);
+            float spiralPhase = theta + 1.6 * log(Rlen + 0.20);
+            float arm = exp(-pow(sin(spiralPhase) * 3.0, 2.0));
+            ring *= arm;
 
-            // убираем центр — "чёрная дыра"
-            float coreHole = smoothstep(0.10, 0.20, lenp);
-            band *= coreHole;
+            // центр выжжен — чёрная дыра, без тумана
+            float coreMask = smoothstep(0.10, 0.20, Rlen);
+            ring *= coreMask;
 
-            // падение плотности к краям
-            float radialFalloff = exp(-lenp * 1.2);
-            float density = band * radialFalloff;
+            // падение плотности к внешним границам
+            ring *= smoothstep(0.35, 1.5, Rlen) * (1.0 - smoothstep(1.6, 2.3, Rlen));
 
-            // кластеризация: крупные скопления и пустоты
-            vec2 clusterCell = floor(gpos * 4.0);
-            float clusterNoise = hash(clusterCell + 19.37);
-            float clusterWeight = smoothstep(0.35, 1.0, clusterNoise);
-            density *= clusterWeight;
-
-            // дискретные "ячейки" для звёзд
-            vec2 starUV   = gpos * 2.4;
-            vec2 starCell = floor(starUV * res.y * 0.20);
-            vec2 cellFrac = fract(starUV * res.y * 0.20) - 0.5;
-
-            float baseStarNoise = hash(starCell + 37.91);
-            float extraNoise    = hash(starCell + 88.19);
-
-            // вероятность звезды зависит от плотности тора, плюс рандом
-            float prob = clamp(density * 3.0, 0.0, 1.0);
-            prob *= smoothstep(0.25, 1.0, extraNoise);
-
-            float starPresence = step(1.0 - prob, baseStarNoise);
-
-            // "глубина": ближняя часть тора (справа и ближе к горизонту) — крупнее
+            // глубина: ближняя часть тора (справа и чуть ниже горизонта) — "к нам"
             float depthSide = smoothstep(-0.2, 0.9, gpos.x);
-            float depthVert = 1.0 - smoothstep(0.1, 0.9, gpos.y + 0.25);
+            float depthVert = 1.0 - smoothstep(-0.2, 0.7, gpos.y + 0.3);
             float depth = clamp(0.15 + 0.85 * depthSide * depthVert, 0.0, 1.0);
 
-            // случайный разброс размеров плюс перспектива (визуально 10–30 px)
-            float sizeNoise = hash(starCell + 55.0);
-            float starSize = mix(0.8, 4.8, depth) * mix(0.8, 1.4, sizeNoise);
+            // масштаб ячеек зависит от глубины: ближе → крупнее звёзды / реже сетка
+            float baseScale = 16.0;
+            float depthScale = mix(baseScale * 1.6, baseScale * 0.7, depth);
+            vec2 gridCoord = gpos * depthScale;
 
-            float starShape = exp(-dot(cellFrac, cellFrac) / (0.004 * starSize));
+            vec2 cell   = floor(gridCoord);
+            vec2 cellUV = fract(gridCoord);
 
-            float star = starPresence * starShape;
+            // джиттер центра звезды внутри ячейки
+            float h1 = hash(cell + 3.17);
+            float h2 = hash(cell + 7.71);
+            vec2 starCenter = vec2(h1, h2);
+            vec2 diff = cellUV - starCenter;
+
+            // вероятность присутствия звезды в ячейке — зависит от плотности тора
+            float baseStarNoise = hash(cell + 11.13);
+            float density = clamp(ring * 3.0, 0.0, 1.0);
+            float presence = step(1.0 - density, baseStarNoise);
+
+            // размер звезды (радиус диска) — от ~10 до ~30 px визуально
+            float sizeNoise = hash(cell + 19.31);
+            float sizeDepth = mix(0.8, 4.0, depth);
+            float starSize = sizeDepth * mix(0.8, 1.4, sizeNoise);
+
+            // перевод условного размера в "sigma" для гаусса в координатах ячейки
+            float sigma = 0.05 * starSize;
+            float dist2 = dot(diff, diff);
+            float starShape = exp(-dist2 / (sigma * sigma + 1e-6));
+
+            float star = presence * starShape;
 
             // мерцание
-            float starTwinkle = 0.7 + 0.3 * sin(u_time * 2.7 + baseStarNoise * 60.0);
-            star *= starTwinkle;
+            float twinkle = 0.7 + 0.3 * sin(u_time * 2.7 + hash(cell + 101.7) * 60.0);
+            star *= twinkle;
 
-            // цвет: холодные сине-белые, чуть теплее ближе к нам
-            vec3 coldCol = vec3(0.80, 0.90, 1.35);
-            vec3 warmCol = vec3(1.10, 1.20, 1.85);
-            vec3 starCol = mix(coldCol, warmCol, depth);
+            // цвет: дальние — холоднее, ближние — ярче и белее
+            vec3 farCol  = vec3(0.70, 0.85, 1.35);
+            vec3 nearCol = vec3(1.25, 1.30, 1.90);
+            vec3 starCol = mix(farCol, nearCol, depth);
 
             vec3 galaxy = starCol * star;
 
-            float galaxyStrength = nightFactor * 1.35;
+            // усиление только ночью
+            float galaxyStrength = nightFactor * 1.5;
             col += galaxy * galaxyStrength;
 
-            // редкий фоновый "микро-стат" по всему небу
+            // редкий фоновый "шум" мелких далёких звёзд
             vec2 bgCell = floor((uv * res) * 0.35);
             float bgN   = hash(bgCell + 123.4);
-            float bgStar = step(0.996, bgN) * smoothstep(0.0, 0.25, bgN);
+            float bgStar = step(0.995, bgN) * smoothstep(0.0, 0.25, bgN);
             vec3 bgCol = vec3(0.65, 0.75, 1.25);
-            col += bgCol * bgStar * nightFactor * 0.4;
+            col += bgCol * bgStar * nightFactor * 0.35;
           }
         } else {
           // ===== МОРЕ =====
@@ -431,10 +433,10 @@
           float waterDayNight = mix(1.35, 0.55, hidden);
           water *= waterDayNight;
 
-          // дополнительное сильное осветление горизонта при восходе/дне
-          float nearH = exp(-pow((t - 1.0) / 0.16, 2.0)); // полоса у горизонта
-          float sunUp = 1.0 - hidden;                    // чем выше солнце, тем светлее
-          vec3 horizonGlow = vec3(0.40, 0.70, 1.20);     // холодный голубой глянец
+          // сильное осветление горизонта при восходе/дне
+          float nearH = exp(-pow((t - 1.0) / 0.16, 2.0));
+          float sunUp = 1.0 - hidden;
+          vec3 horizonGlow = vec3(0.40, 0.70, 1.20);
           water += horizonGlow * nearH * sunUp * 0.55;
 
           col = water;
@@ -592,10 +594,8 @@
 
             float w1Mask = clamp(line * 1.6, 0.0, 1.0);
 
-            // чистая непрозрачная белая полоса
             col = mix(col, vec3(1.0, 1.0, 1.0), w1Mask);
 
-            // лёгкий голубой глоу по краям
             vec3 waveColGlow = mix(WAVE_COLOR_NEAR_WHITE, WAVE_COLOR_BLUE, W1_BLEND);
             col += waveColGlow * line * 0.35;
           }
@@ -687,7 +687,6 @@
           vec3 waveColorBase = vec3(0.30, 0.60, 1.00);
           col += waveColorBase * wavesFine * 0.7;
 
-          // отражение солнца
           float tRef = (horizon - uv.y) / horizon;
           tRef = clamp(tRef, 0.0, 1.0);
 

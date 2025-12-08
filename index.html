@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Lotus Trance – Digital Ocean Sun</title>
+  <title>Sea Trance – Digital Ocean Sun</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
@@ -83,7 +83,7 @@
   <canvas id="scene"></canvas>
 
   <div class="ui-main">
-    <h1>LOTUS TRANCE</h1>
+    <h1>SEA TRANCE</h1>
     <div class="divider"></div>
     <p>Digital ocean • Mandala sun • Quantum geometry</p>
     <p class="tagline">Blue sound waves • Interference reflection</p>
@@ -143,14 +143,23 @@
 
       varying vec2 v_uv;
 
-      // ===== TUNE: море – градиент снизу до горизонта =====
-      const vec3 WATER_BOTTOM_COLOR  = vec3(0.002, 0.015, 0.05);
-      const vec3 WATER_HORIZON_COLOR = vec3(0.020, 0.080, 0.22);
+      // ===== TUNE: море – градиенты для дня и ночи =====
+      // ночь: низ #09053D, горизонт #04002E
+      const vec3 WATER_BOTTOM_NIGHT  = vec3(9.0/255.0,  5.0/255.0, 61.0/255.0);
+      const vec3 WATER_HORIZON_NIGHT = vec3(4.0/255.0,  0.0/255.0, 46.0/255.0);
+      // день: низ #00194E, горизонт #00207A
+      const vec3 WATER_BOTTOM_DAY    = vec3(0.0/255.0, 25.0/255.0, 78.0/255.0);
+      const vec3 WATER_HORIZON_DAY   = vec3(0.0/255.0, 32.0/255.0,122.0/255.0);
+
+      // ===== TUNE: небо – сплошные цвета дня/ночи =====
+      // ночь: #04002E, день: #00207A
+      const vec3 SKY_NIGHT = vec3(4.0/255.0,  0.0/255.0, 46.0/255.0);
+      const vec3 SKY_DAY   = vec3(0.0/255.0, 32.0/255.0,122.0/255.0);
 
       // ===== TUNE: солнце – 5 колец =====
       // радиусы (умножаются на sunScale)
-      const float R1_RADIUS = 0.16;
-      const float R2_RADIUS = 0.21;
+      const float R1_RADIUS = 0.14;
+      const float R2_RADIUS = 0.20;
       const float R3_RADIUS = 0.26;
       const float R4_RADIUS = 0.31;
       const float R5_RADIUS = 0.36;
@@ -176,9 +185,9 @@
       const float R4_SPEED = 1.9;
       const float R5_SPEED = 2.3;
 
-      // толщины линий
-      const float R1_WIDTH = 0.0025;
-      const float R2_WIDTH = 0.0032;
+      // толщины линий (от тонкого к толстому наружу)
+      const float R1_WIDTH = 0.0029;
+      const float R2_WIDTH = 0.0034;
       const float R3_WIDTH = 0.0040;
       const float R4_WIDTH = 0.0048;
       const float R5_WIDTH = 0.0060;
@@ -282,50 +291,52 @@
         float g = u_glitch;
 
         float horizon = 0.45;
-
-        // фон: небо и море
-        vec3 col;
-        if (uv.y > horizon) {
-          float t = (uv.y - horizon) / (1.0 - horizon);
-          t = clamp(t, 0.0, 1.0);
-          vec3 skyTop = vec3(0.01, 0.006, 0.06);
-          vec3 skyMid = vec3(0.01, 0.005, 0.035);
-          vec3 skyBot = vec3(0.0, 0.0, 0.015);
-          vec3 sky = mix(skyBot, mix(skyBot, skyTop, 0.6), t);
-          col = sky;
-        } else {
-          float t = uv.y / horizon;
-          t = clamp(t, 0.0, 1.0);
-          vec3 water = mix(WATER_BOTTOM_COLOR, WATER_HORIZON_COLOR, t);
-          col = water;
-        }
-
-        // параметры солнца
         float horizonY = horizon;
         float centerXNorm = 2.0 / 3.0;
         float sunScale = 0.7;
         float aspect = res.x / res.y;
 
-        // цикл: стартуем ниже горизонта (восход)
+        // цикл: солнце ходит вверх-вниз
         float sunPhase = u_time * 0.05;
-        float sunOffset = -cos(sunPhase) * 0.30;  // t=0 -> -0.30: солнце под горизонтом
+        float sunOffset = -cos(sunPhase) * 0.30; // t=0 -> -0.30: солнце под горизонтом
         float sunCenterY = horizonY + sunOffset;
 
+        // координаты относительно солнца
         vec2 p = vec2((uv.x - centerXNorm) * aspect, uv.y - sunCenterY);
         float dSun = length(p);
         float angle = atan(p.y, p.x);
 
-        // оценка максимального радиуса (по внешнему кольцу)
+        // насколько солнце "спрятано" под горизонтом
         float maxRadius = R5_RADIUS * sunScale;
-        float hidden = clamp((horizonY - sunCenterY) / maxRadius, 0.0, 1.0);
-        float visibility = 1.0 - hidden;
+        float hidden = clamp((horizonY - sunCenterY) / maxRadius, 0.0, 1.0); // 0 = над, 1 = глубоко под
+        float visibility = 1.0 - hidden; // 1 = полностью над горизонтом
+
+        float sunUp = visibility; // читаемее
+
+        vec3 col;
+
+        // фон: небо и море с учётом положения солнца
+        if (uv.y > horizon) {
+          // НЕБО: без градиентов – просто плавный переход между двумя цветами
+          vec3 sky = mix(SKY_NIGHT, SKY_DAY, sunUp);
+          col = sky;
+        } else {
+          // МОРЕ: градиент зависит от того, над или под горизонтом солнце
+          float t = uv.y / horizon;
+          t = clamp(t, 0.0, 1.0);
+
+          vec3 waterNight = mix(WATER_BOTTOM_NIGHT, WATER_HORIZON_NIGHT, t);
+          vec3 waterDay   = mix(WATER_BOTTOM_DAY,   WATER_HORIZON_DAY,   t);
+
+          vec3 water = mix(waterNight, waterDay, sunUp);
+          col = water;
+        }
 
         float aboveHorizon = step(horizon, uv.y);
 
         // ===== 5 колец солнца =====
         vec3 ringsColor = vec3(0.0);
 
-        // t 0..1 для цвета внутренних/внешних колец
         float t1 = 0.00;
         float t2 = 0.25;
         float t3 = 0.50;

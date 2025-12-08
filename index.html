@@ -90,8 +90,8 @@
   </div>
 
   <div class="corner-label">
-    <span>SHADER SYSTEM v4.2</span>
-    <span>WEBGL / OCEAN–SUN–GALAXY ENGINE</span>
+    <span>SHADER SYSTEM v4.5</span>
+    <span>WEBGL / OCEAN–SUN–SPIRAL GALAXY</span>
   </div>
 
   <script>
@@ -144,9 +144,9 @@
       varying vec2 v_uv;
 
       // ===== TUNE: море – градиент снизу до горизонта =====
-      // немного светлее в зоне крупных волн, темнее у горизонта
-      const vec3 WATER_BOTTOM_COLOR  = vec3(0.012, 0.055, 0.16); // чуть светлее низ
-      const vec3 WATER_HORIZON_COLOR = vec3(0.003, 0.020, 0.070); // темно-синий горизонт
+      // немного светлее в зоне крупных волн, темно-синий у горизонта
+      const vec3 WATER_BOTTOM_COLOR  = vec3(0.012, 0.055, 0.16);
+      const vec3 WATER_HORIZON_COLOR = vec3(0.003, 0.020, 0.070);
 
       // ===== TUNE: солнце – 5 колец =====
       const float R1_RADIUS = 0.12;
@@ -283,78 +283,122 @@
         float hidden = clamp((horizonY - sunCenterY) / maxRadius, 0.0, 1.0);
         float visibility = 1.0 - hidden;
 
-        // ===== ДИНАМИЧЕСКОЕ НЕБО =====
         vec3 col;
 
+        // ===== ДИНАМИЧЕСКОЕ НЕБО =====
         if (uv.y > horizon) {
           float t = (uv.y - horizon) / (1.0 - horizon);
           t = clamp(t, 0.0, 1.0);
 
-          // светлое голубое небо (день/восход)
-          vec3 daySkyBot  = vec3(0.10, 0.25, 0.55);
-          vec3 daySkyTop  = vec3(0.35, 0.55, 0.95);
+          // чистое голубое небо
+          vec3 daySkyBot  = vec3(0.18, 0.40, 0.85);
+          vec3 daySkyTop  = vec3(0.45, 0.75, 1.05);
           vec3 daySky     = mix(daySkyBot, daySkyTop, t);
 
-          // темно-синее небо (поздний закат / предночь)
+          // темно-синий закат
           vec3 duskSkyBot = vec3(0.01, 0.02, 0.08);
           vec3 duskSkyTop = vec3(0.02, 0.05, 0.16);
           vec3 duskSky    = mix(duskSkyBot, duskSkyTop, t);
 
-          // почти чёрное ночное небо
+          // почти чёрная ночь
           vec3 nightSkyBot = vec3(0.0, 0.0, 0.01);
           vec3 nightSkyTop = vec3(0.0, 0.0, 0.015);
           vec3 nightSky    = mix(nightSkyBot, nightSkyTop, t);
 
-          // hidden: 0 → солнце высоко, 1 → глубоко под горизонтом
-          float duskFactor  = smoothstep(0.2, 0.7, hidden);      // от голубого к тёмно-синему
-          float nightFactor = smoothstep(0.6, 0.95, hidden);     // от тёмно-синего к почти чёрному
+          float duskFactor  = smoothstep(0.2, 0.7, hidden);
+          float nightFactor = smoothstep(0.6, 0.95, hidden);
 
           vec3 skyDayDusk = mix(daySky, duskSky, duskFactor);
           vec3 sky        = mix(skyDayDusk, nightSky, nightFactor);
 
           col = sky;
 
-          // ===== МЛЕЧНЫЙ ПУТЬ (реалистичнее, только ночью) =====
+          // ===== СПИРАЛЬНАЯ ГАЛАКТИКА (один рукав, наклон ~35°, правый край ниже) =====
           if (nightFactor > 0.0) {
+            // координаты неба в [-1,1], центр в середине
             vec2 suv = uv * 2.0 - 1.0;
-            suv.y *= 1.2;
 
-            float galAngle = u_time * 0.015;
-            float cg = cos(galAngle);
-            float sg = sin(galAngle);
-            mat2 grot = mat2(cg, -sg, sg, cg);
-            vec2 gpos = grot * suv;
+            // смещаем центр галактики чуть вниз и влево
+            suv.x -= 0.05;
+            suv.y += 0.05;
 
-            // полоса Млечного пути – узкая, как дуга
-            float bandDist = abs(gpos.y * 0.9);
-            float band = exp(-bandDist * bandDist * 18.0);
+            // "тор": сжатие по вертикали = диск
+            suv.y *= 0.55;
 
-            // базовый "туман" / звёздная пыль
-            vec2 galaxyGrid = floor(gpos * res.y * 0.4);
-            float n1 = hash(galaxyGrid);
-            float n2 = hash(galaxyGrid + 17.13);
-            float noiseMix = (n1 * 0.7 + n2 * 0.3);
-            float fog = band * (0.25 + 0.75 * noiseMix);
+            // наклон галактики: слегка поворачиваем
+            float tilt = radians(35.0);
+            float ct = cos(tilt);
+            float st = sin(tilt);
+            mat2 tiltRot = mat2(ct, -st, st, ct);
+            vec2 gpos = tiltRot * suv;
 
-            // более резкая структура вдоль полосы
-            float streak = band * (0.4 + 0.6 * sin(gpos.x * 55.0 + u_time * 0.5));
+            // правый край чуть "ниже" — лёгкий наклон по x->y
+            gpos.y -= gpos.x * 0.20;
 
-            // редкие, но яркие звёзды
-            float starSeed = hash(galaxyGrid + 91.73);
-            float starMask = step(0.988, starSeed); // немного ярких точек
-            float starPulse = 0.7 + 0.3 * sin(u_time * 3.0 + starSeed * 50.0);
-            float starGlow = starMask * starPulse;
+            float r = length(gpos);
+            float th = atan(gpos.y, gpos.x);
 
-            vec3 galaxyCoreCol = vec3(1.0, 0.96, 1.08);  // почти белое ядро
-            vec3 galaxyFogCol  = vec3(0.45, 0.55, 1.1);  // сине-белый туман
-            vec3 starCol       = vec3(1.4, 1.35, 1.1);   // яркие звезды
+            // логарифмическая спираль одного рукава
+            // spiralCoord ≈ 0 вдоль основного рукава
+            float tightness = 4.0;
+            float spiralCoord = th + log(r + 0.05) * tightness;
+
+            float armWidth = 0.40;
+            float armMask = exp(- (spiralCoord * spiralCoord) / armWidth);
+
+            // затухание по радиусу: яркий центр, затухание к краю
+            float radFalloff = exp(-r * 2.2);
+            float coreBoost  = exp(-r * 14.0);
+
+            // базовый "туман" рукава
+            float armBase = armMask * radFalloff;
+
+            // ограничим один рукав: маска по углу (оставляем сектор)
+            float sector = smoothstep(-0.3, 0.6, th);
+            armBase *= sector;
+
+            // шум структуры в рукаве
+            vec2 armUV = gpos * 4.0;
+            float n1 = hash(floor(armUV * res.y * 0.18));
+            float n2 = hash(floor(armUV * res.y * 0.25 + 13.37));
+            float armNoise = 0.6 + 0.4 * (n1 * 0.7 + n2 * 0.3);
+
+            float fog = armBase * armNoise;
+
+            // яркий центр галактики
+            float core = coreBoost * 1.6;
+
+            // звёзды: ближние крупнее/ярче, дальние мельче
+            vec2 starUV = gpos * vec2(3.0, 2.0);
+            vec2 starCell = floor(starUV * res.y * 0.25);
+            vec2 cellFrac = fract(starUV * res.y * 0.25) - 0.5;
+
+            float baseStarNoise = hash(starCell + 91.73);
+            float starPresence = step(0.990, baseStarNoise); // редкие точки
+
+            // "глубина": ближе к центру и ближе к нам → крупнее
+            float depth = clamp(1.3 - r * 1.5, 0.0, 1.0);
+            float starSize = mix(0.4, 1.5, depth); // у центра и "рядом" звезды крупнее
+
+            float starShape = exp(-dot(cellFrac, cellFrac) / (0.008 * starSize));
+            float star = starPresence * starShape;
+
+            // лёгкое мерцание звёзд
+            float starTwinkle = 0.7 + 0.3 * sin(u_time * 3.2 + baseStarNoise * 60.0);
+            star *= starTwinkle;
+
+            // цвета
+            vec3 galaxyCoreCol = vec3(1.1, 1.00, 1.15);  // центр – бело-фиолетовый
+            vec3 galaxyArmCol  = vec3(0.55, 0.70, 1.25); // рукав – сине-голубой
+            vec3 galaxyStarCol = vec3(1.6, 1.55, 1.2);   // крупные звёзды – тёплые белые
 
             vec3 galaxy =
-              galaxyFogCol * fog * 0.9 +
-              galaxyCoreCol * streak * 0.7 +
-              starCol * starGlow * 1.2;
+              galaxyArmCol  * fog * 0.9 +
+              galaxyCoreCol * core * 1.2 +
+              galaxyStarCol * star * 1.4;
 
-            float galaxyStrength = nightFactor * 1.1;
+            // сила галактики растёт к ночи
+            float galaxyStrength = nightFactor * 1.2;
             col += galaxy * galaxyStrength;
           }
         } else {
@@ -363,9 +407,8 @@
           t = clamp(t, 0.0, 1.0);
           vec3 water = mix(WATER_BOTTOM_COLOR, WATER_HORIZON_COLOR, t);
 
-          // подсветка в зоне крупных волн (примерно середина нижней части)
-          float midBand = 1.0 - smoothstep(0.45, 1.0, t); // 1 внизу/середине, 0 ближе к горизонту
-          float brighten = 1.0 + 0.22 * midBand;          // до +22% ярче
+          float midBand = 1.0 - smoothstep(0.45, 1.0, t);
+          float brighten = 1.0 + 0.22 * midBand;
           water *= brighten;
 
           col = water;
@@ -503,7 +546,7 @@
             wavesFine += line * alpha;
           }
 
-          // W1 — нижняя белая
+          // W1 — БЛИЖНЯЯ ВОЛНА: ОТРИСОВКА КАК НЕПРОЗРАЧНАЯ БЕЛАЯ
           {
             float yBase = horizon * W1_POS;
             float amp   = W1_AMP;
@@ -520,8 +563,16 @@
 
             float yTarget = yBase + offset;
             float line = lineAround(uv.y - yTarget, W1_WIDTH);
-            vec3 waveCol = mix(WAVE_COLOR_NEAR_WHITE, WAVE_COLOR_BLUE, W1_BLEND);
-            col += waveCol * line * (W1_ALPHA * 1.4);
+
+            // маска для перекраски океана в белый
+            float w1Mask = clamp(line * 1.6, 0.0, 1.0);
+
+            // делаем её реально "непрозрачной белой" — поверхность, а не просто добавление
+            col = mix(col, vec3(1.0, 1.0, 1.0), w1Mask);
+
+            // небольшой голубой глоу поверх, чтобы сохранить цифровой вайб
+            vec3 waveColGlow = mix(WAVE_COLOR_NEAR_WHITE, WAVE_COLOR_BLUE, W1_BLEND);
+            col += waveColGlow * line * 0.35;
           }
 
           // W2
